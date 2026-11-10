@@ -11,8 +11,8 @@ load_dotenv()
 @dataclass(frozen=True)
 class Settings:
     database_url: str = os.getenv("DATABASE_URL", "postgresql://futures:futures@localhost:5442/futures")
-    reasoning_model: str = os.getenv("DF_REASONING_MODEL", "anthropic:claude-opus-5-5")
-    narrative_model: str = os.getenv("DF_NARRATIVE_MODEL", "google_genai:gemini-2.5-pro")
+    reasoning_model: str = os.getenv("DF_REASONING_MODEL", "openrouter:anthropic/claude-opus-5.5")
+    narrative_model: str = os.getenv("DF_NARRATIVE_MODEL", "openrouter:google/gemini-3.8-flash")
 
 
 settings = Settings()

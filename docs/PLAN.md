@@ -14,7 +14,10 @@ into a LangGraph application.
 | Node 4 | AI pre-scores with evidence, humans adjust. Split in two passes (4a impact + uncertainty, then 4b policy attention) |
 | UI | Web app from the start (Streamlit), plus a terminal runner for development |
 | Search | Tavily for web signals; Asta (`asta literature find`) for papers |
-| Models | Opus 5.5 (`claude-opus-5-5`) for reasoning steps; a Gemini model for narratives; all configurable by env var |
+| Models | Through OpenRouter: Opus 5.5 (`anthropic/claude-opus-5.5`) for reasoning steps, Gemini 3.8 Flash (`google/gemini-3.8-flash`) for narratives; configurable by env var |
+| Time frame | 2026 → 2065 |
+| Axis sets | Their number follows the clusters, not a fixed 3 (exact rule settled in phase 6) |
+| Narratives | For all quadrants |
 
 ## Lessons from the probes → design rules
 
@@ -79,9 +82,9 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 
 | Phase | Content | Done when |
 | --- | --- | --- |
-| 0 | Repo setup: deps, `.env.example`, Postgres compose, `langgraph.json` | `uv sync` and `docker compose up` work |
-| 1 | Skeleton: state, review loop, 8 stub nodes, Postgres persistence, terminal runner | A full run with simulated human answers passes in tests |
-| 2 | Web app shell (Streamlit): scope form, review panel per step, thread resume | A human can drive the stub graph in the browser |
+| 0 ✅ | Repo setup: deps, `.env.example`, Postgres compose, `langgraph.json` | `uv sync` and `docker compose up` work |
+| 1 ✅ | Skeleton: state, review loop, 8 stub nodes, Postgres persistence, terminal runner | A full run with simulated human answers passes in tests |
+| 2 ✅ | Web app shell (Streamlit): scope form, review panel per step, thread resume | A human can drive the stub graph in the browser |
 | 3 | Node 2 for real: Tavily + Asta tools, Opus 5.5 | Real drivers with sources |
 | 4 | Node 3 deepagent clustering + rubric | Clusters pass rule 4 |
 | 5 | Nodes 4a, 4b, 5 | Scores with evidence; human-adjustable table in the UI |
@@ -91,6 +94,5 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 
 ## Open questions
 
-- Which Gemini model for narratives?
-- How many axis sets (3 as in the probes?) and how many drivers to aim for in node 2?
-- Should narratives be generated for all quadrants, or only the ones humans pick after node 7?
+- How many drivers to aim for in node 2?
+- Exact rule linking clusters to axis sets (one set per pair of clusters holding a critical driver?).

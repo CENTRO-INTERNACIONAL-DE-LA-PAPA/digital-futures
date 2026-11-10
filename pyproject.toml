@@ -9,8 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "deepagents>=0.7.35",
-    "langchain-anthropic>=1.7.10",
-    "langchain-google-genai>=4.4.3",
+    "langchain-openrouter>=0.2.9",
     "langchain-tavily>=0.2.18",
     "langgraph>=1.2.20",
     "langgraph-checkpoint-postgres>=3.2.0",
@@ -21,6 +20,7 @@ dependencies = [
 
 [project.scripts]
 digital-futures = "digital_futures:main"
+digital-futures-web = "digital_futures.app:web"
 
 [build-system]
 requires = ["uv_build>=0.13.6,<0.14.0"]

@@ -9,12 +9,10 @@ import os
 import subprocess
 import sys
 import tempfile
-import uuid
 
-from langgraph.types import Command
-
+from digital_futures import runs
 from digital_futures.graph import build_graph
-from digital_futures.persistence import postgres
+from digital_futures.persistence import connect
 
 
 def ask(step: str, data) -> dict:
@@ -38,16 +36,13 @@ def edit_json(data):
 
 
 def main() -> None:
-    thread_id = sys.argv[1] if len(sys.argv) > 1 else str(uuid.uuid4())
-    config = {"configurable": {"thread_id": thread_id}}
-    print(f"Thread: {thread_id}")
+    checkpointer, store = connect()
+    graph = build_graph(checkpointer, store)
+    thread_id = sys.argv[1] if len(sys.argv) > 1 else runs.start(graph, store)
+    print(f"Run: {thread_id}")
 
-    with postgres() as (checkpointer, store):
-        graph = build_graph(checkpointer, store)
-        pending = graph.get_state(config).interrupts
-        result = graph.invoke(None if pending else {"hitl": True}, config)
-        while interrupts := result.get("__interrupt__"):
-            request = interrupts[0].value
-            result = graph.invoke(Command(resume=ask(request["step"], request["data"])), config)
+    while request := runs.pending(graph, thread_id):
+        runs.resume(graph, thread_id, ask(request["step"], request["data"]))
 
-    print(json.dumps(result.get("narratives", []), indent=2, ensure_ascii=False))
+    narratives = graph.get_state(runs.config(thread_id)).values.get("narratives", [])
+    print(json.dumps(narratives, indent=2, ensure_ascii=False))

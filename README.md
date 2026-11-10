@@ -3,7 +3,7 @@
 1. Define thematic, geographic and temporal scope.
     theme: food, land and water 
     geography: south countries
-    current_time: 2025
+    current_time: 2026
     future_time: 2065
 
 2. Identify drivers of change.
@@ -68,7 +68,8 @@
 cp .env.example .env          # add API keys
 docker compose up -d          # Postgres checkpointer + store
 uv sync
-uv run digital-futures        # terminal runner (new run); pass a thread id to resume
+uv run digital-futures-web    # web app (Streamlit)
+uv run digital-futures        # terminal runner (new run); pass a run id to resume
 uv run pytest
 ```
 

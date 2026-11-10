@@ -5,7 +5,7 @@ from digital_futures.state import Scope, State
 DEFAULT_SCOPE: Scope = {
     "theme": "food, land and water systems",
     "geography": "Global South",
-    "current_year": 2025,
+    "current_year": 2026,
     "horizon_year": 2065,
     "seed_drivers": [],
 }

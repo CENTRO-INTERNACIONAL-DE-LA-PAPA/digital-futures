@@ -49,3 +49,29 @@ def with_retries(call, report, attempts: int = 3):
                 raise
             reason = e.ai_message.response_metadata.get("finish_reason") if e.ai_message else "unknown"
             report(f"The AI's answer came back broken (finish reason: {reason}); retrying ({attempt}/{attempts - 1})…")
+
+
+def ask_all(schema, prompts: list[str], report, label: str, check=None, attempts: int = 3) -> list:
+    """Ask the reasoning model independent structured questions in parallel.
+
+    Answers that come back broken, or fail `check(index, answer)`, are asked again.
+    """
+    llm = chat_model(settings.reasoning_model, max_tokens=16_000).with_structured_output(schema, method="json_schema")
+    answers: list = [None] * len(prompts)
+    todo = list(range(len(prompts)))
+    for attempt in range(1, attempts + 1):
+        failed = []
+        batch = llm.batch_as_completed([prompts[i] for i in todo], {"max_concurrency": 8}, return_exceptions=True)
+        for k, answer in batch:
+            i = todo[k]
+            if isinstance(answer, Exception) or answer is None or (check and not check(i, answer)):
+                failed.append(i)
+            else:
+                answers[i] = answer
+                report(f"{label}: {sum(a is not None for a in answers)}/{len(prompts)} done")
+        if not failed:
+            return answers
+        if attempt < attempts:
+            report(f"{label}: {len(failed)} answers were broken or incomplete; asking again…")
+        todo = failed
+    raise RuntimeError(f"{label}: {len(todo)} of {len(prompts)} answers still broken after {attempts} attempts")

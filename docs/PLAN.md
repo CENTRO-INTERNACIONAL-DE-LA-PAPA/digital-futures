@@ -19,6 +19,8 @@ into a LangGraph application.
 | Axis sets | Their number follows the clusters, not a fixed 3 (exact rule settled in phase 6) |
 | Narratives | For all quadrants |
 | Drivers | Target about 80 per run (editable in the scope form) |
+| Critical drivers | One per cluster: highest impact × uncertainty, ties broken by lower policy attention; the AI explains each pick |
+| Policy attention (4b) | One Tavily search per driver; the score cites the links found |
 | Structured output | Native JSON schema: `config.chat_model` marks models as supporting it, because Claude models reject forced tool calls |
 | Rubric grader | Gemini 3.8 Flash (`DF_GRADER_MODEL`): Anthropic models reject the grader schema's `oneOf` |
 
@@ -90,7 +92,7 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | 2 ✅ | Web app shell (Streamlit): scope form, review panel per step, thread resume | A human can drive the stub graph in the browser |
 | 3 ✅ | Node 2 for real: Tavily + Asta tools | Real drivers with sources |
 | 4 ✅ | Node 3 deepagent clustering + rubric | Clusters pass rule 4 |
-| 5 | Nodes 4a, 4b, 5 | Scores with evidence; human-adjustable table in the UI |
+| 5 ✅ | Nodes 4a, 4b, 5 | Scores with evidence; human-adjustable table in the UI |
 | 6 | Node 6 deepagent axes + rubric, node 7 | Axes pass rule 6; quadrants for each set |
 | 7 | Node 8 narratives (Gemini) | Readable narratives per quadrant and persona |
 | 8 | Research support: run log (timings, human edits), export to Markdown, experiment arms | Outputs usable for the working paper metrics |

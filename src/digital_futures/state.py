@@ -36,10 +36,22 @@ class Cluster(TypedDict):
 
 class Score(TypedDict):
     driver_id: str
+    name: str
     impact: int  # 1-5
     uncertainty: int  # 1-5
-    policy_attention: NotRequired[int]  # 1-5, added in the second scoring pass
     evidence: str
+    policy_attention: NotRequired[int]  # 1-5, added in the second scoring pass
+    policy_evidence: NotRequired[str]
+
+
+class Critical(TypedDict):
+    driver_id: str
+    name: str
+    cluster: str
+    impact: int
+    uncertainty: int
+    policy_attention: int
+    rationale: str
 
 
 class Axis(TypedDict):
@@ -82,7 +94,7 @@ class State(TypedDict, total=False):
     drivers: list[Driver]
     clusters: list[Cluster]
     scores: list[Score]
-    critical: list[str]  # driver ids
+    critical: list[Critical]
     axis_sets: list[AxisSet]
     quadrants: list[Quadrant]
     narratives: list[Narrative]

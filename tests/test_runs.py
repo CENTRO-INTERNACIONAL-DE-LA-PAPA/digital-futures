@@ -39,7 +39,7 @@ def test_reopen_goes_back_to_an_earlier_review_without_rerunning_it():
     values = runs.state(graph, thread_id)
     assert "v2" in values["drivers"][0]["description"]  # latest version kept
     assert "clusters" not in values
-    assert messages == ["fake search", "fake search"]  # the AI step was not re-run
+    assert messages.count("fake search") == 2  # the drivers step was not re-run
 
 
 def test_reopen_unknown_step_fails():

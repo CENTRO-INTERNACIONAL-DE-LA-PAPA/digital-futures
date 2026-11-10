@@ -79,6 +79,7 @@ def new_run_form(graph, store) -> None:
         c1, c2 = st.columns(2)
         current = c1.number_input("Current year", value=DEFAULT_SCOPE["current_year"], step=1)
         horizon = c2.number_input("Horizon year", value=DEFAULT_SCOPE["horizon_year"], step=1)
+        target = st.number_input("Target number of drivers", value=DEFAULT_SCOPE["target_drivers"], min_value=5, step=5)
         seeds = st.text_area("Seed drivers (optional, one per line)", help="Drivers people bring in, e.g. from a workshop.")
         hitl = st.toggle("Human review after each step", value=True)
         if st.form_submit_button("Start", type="primary"):
@@ -88,8 +89,9 @@ def new_run_form(graph, store) -> None:
                 "current_year": int(current),
                 "horizon_year": int(horizon),
                 "seed_drivers": [s.strip() for s in seeds.splitlines() if s.strip()],
+                "target_drivers": int(target),
             }
-            with st.spinner("Running the first step…"):
+            with st.spinner("Scanning for drivers of change (several minutes)…"):
                 st.query_params["run"] = runs.start(graph, store, scope, hitl)
             st.rerun()
 

@@ -50,7 +50,7 @@ def test_seed_drivers_and_scope_override():
     result, _ = run({}, {"scope": {"horizon_year": 2050, "seed_drivers": ["Cognitive debt"]}})
     assert result["scope"]["horizon_year"] == 2050
     assert result["scope"]["geography"] == "Global South"
-    assert result["drivers"][0]["name"] == "Cognitive debt"
+    assert "Cognitive debt" in result["drivers"][0]["description"]
 
 
 def test_without_hitl_runs_straight_through():

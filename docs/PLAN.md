@@ -18,6 +18,8 @@ into a LangGraph application.
 | Time frame | 2026 → 2065 |
 | Axis sets | Their number follows the clusters, not a fixed 3 (exact rule settled in phase 6) |
 | Narratives | For all quadrants |
+| Drivers | Target about 80 per run (editable in the scope form) |
+| Structured output | Native JSON schema (`ProviderStrategy`): Opus 5.5 rejects forced tool calls |
 
 ## Lessons from the probes → design rules
 
@@ -85,7 +87,7 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | 0 ✅ | Repo setup: deps, `.env.example`, Postgres compose, `langgraph.json` | `uv sync` and `docker compose up` work |
 | 1 ✅ | Skeleton: state, review loop, 8 stub nodes, Postgres persistence, terminal runner | A full run with simulated human answers passes in tests |
 | 2 ✅ | Web app shell (Streamlit): scope form, review panel per step, thread resume | A human can drive the stub graph in the browser |
-| 3 | Node 2 for real: Tavily + Asta tools, Opus 5.5 | Real drivers with sources |
+| 3 ✅ | Node 2 for real: Tavily + Asta tools, Opus 5.5 | Real drivers with sources |
 | 4 | Node 3 deepagent clustering + rubric | Clusters pass rule 4 |
 | 5 | Nodes 4a, 4b, 5 | Scores with evidence; human-adjustable table in the UI |
 | 6 | Node 6 deepagent axes + rubric, node 7 | Axes pass rule 6; quadrants for each set |
@@ -94,5 +96,4 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 
 ## Open questions
 
-- How many drivers to aim for in node 2?
 - Exact rule linking clusters to axis sets (one set per pair of clusters holding a critical driver?).

@@ -17,6 +17,7 @@ class Scope(TypedDict):
     current_year: int
     horizon_year: int
     seed_drivers: list[str]  # drivers humans bring in before the run (e.g. from a workshop)
+    target_drivers: int
 
 
 class Driver(TypedDict):

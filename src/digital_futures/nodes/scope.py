@@ -8,6 +8,7 @@ DEFAULT_SCOPE: Scope = {
     "current_year": 2026,
     "horizon_year": 2065,
     "seed_drivers": [],
+    "target_drivers": 80,
 }
 
 

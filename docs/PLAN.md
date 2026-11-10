@@ -19,7 +19,8 @@ into a LangGraph application.
 | Axis sets | Their number follows the clusters, not a fixed 3 (exact rule settled in phase 6) |
 | Narratives | For all quadrants |
 | Drivers | Target about 80 per run (editable in the scope form) |
-| Structured output | Native JSON schema (`ProviderStrategy`): Opus 5.5 rejects forced tool calls |
+| Structured output | Native JSON schema: `config.chat_model` marks models as supporting it, because Opus 5.5 rejects forced tool calls |
+| Rubric grader | Gemini 3.8 Flash (`DF_GRADER_MODEL`): another model family than the agent, and Anthropic models reject the grader schema's `oneOf` |
 
 ## Lessons from the probes → design rules
 
@@ -88,7 +89,7 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | 1 ✅ | Skeleton: state, review loop, 8 stub nodes, Postgres persistence, terminal runner | A full run with simulated human answers passes in tests |
 | 2 ✅ | Web app shell (Streamlit): scope form, review panel per step, thread resume | A human can drive the stub graph in the browser |
 | 3 ✅ | Node 2 for real: Tavily + Asta tools, Opus 5.5 | Real drivers with sources |
-| 4 | Node 3 deepagent clustering + rubric | Clusters pass rule 4 |
+| 4 ✅ | Node 3 deepagent clustering + rubric | Clusters pass rule 4 |
 | 5 | Nodes 4a, 4b, 5 | Scores with evidence; human-adjustable table in the UI |
 | 6 | Node 6 deepagent axes + rubric, node 7 | Axes pass rule 6; quadrants for each set |
 | 7 | Node 8 narratives (Gemini) | Readable narratives per quadrant and persona |

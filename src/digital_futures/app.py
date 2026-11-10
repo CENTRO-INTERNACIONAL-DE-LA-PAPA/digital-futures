@@ -28,7 +28,7 @@ TITLES = {
 
 
 # Steps whose AI is not connected yet: they return placeholder data.
-PLACEHOLDERS = {"clusters", "score_impact", "score_policy", "critical", "axes", "quadrants", "narratives"}
+PLACEHOLDERS = {"score_impact", "score_policy", "critical", "axes", "quadrants", "narratives"}
 
 
 @st.cache_resource

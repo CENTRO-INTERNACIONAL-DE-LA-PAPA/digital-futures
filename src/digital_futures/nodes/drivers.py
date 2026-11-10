@@ -3,11 +3,9 @@
 import json
 
 from langchain.agents import create_agent
-from langchain.agents.structured_output import ProviderStrategy
-from langchain.chat_models import init_chat_model
 from pydantic import BaseModel, Field
 
-from digital_futures.config import settings
+from digital_futures.config import chat_model, settings
 from digital_futures.progress import reporter
 from digital_futures.state import State, Steeple
 from digital_futures.tools import find_papers, web_search
@@ -78,11 +76,8 @@ SEARCH_LABELS = {"tavily_search": "web", "find_papers": "papers"}
 
 def research(prompt: str) -> list[dict]:
     report = reporter()
-    model = init_chat_model(settings.reasoning_model, max_tokens=32_000)
-    # ProviderStrategy = native JSON-schema output; Opus 5.5 rejects the forced tool calls of the default strategy.
-    agent = create_agent(
-        model, tools=[web_search(), find_papers], system_prompt=SYSTEM, response_format=ProviderStrategy(Drivers)
-    )
+    model = chat_model(settings.reasoning_model, max_tokens=32_000)
+    agent = create_agent(model, tools=[web_search(), find_papers], system_prompt=SYSTEM, response_format=Drivers)
 
     report("Scanning the web and the literature for drivers of change…")
     searches, result = 0, {}

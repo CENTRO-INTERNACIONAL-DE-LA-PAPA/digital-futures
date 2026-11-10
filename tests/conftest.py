@@ -4,10 +4,13 @@ import importlib
 
 import pytest
 
+from digital_futures.progress import reporter
+
 drivers_node = importlib.import_module("digital_futures.nodes.drivers")
 
 
 def fake_research(prompt: str) -> list[dict]:
+    reporter()("fake search")
     steeple = ["environmental", "technological", "social", "economic"]
     return [
         {"name": f"Driver {i}", "description": prompt, "steeple": steeple[i % 4], "sources": [{"title": "t", "url": "u"}]}

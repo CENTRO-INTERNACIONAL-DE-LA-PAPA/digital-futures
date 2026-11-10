@@ -1,6 +1,7 @@
 """Start, list and resume scenario runs. Each run is a LangGraph thread, registered in the store."""
 
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 from langgraph.store.base import BaseStore
@@ -13,15 +14,24 @@ def config(thread_id: str) -> dict:
     return {"configurable": {"thread_id": thread_id}}
 
 
-def start(graph, store: BaseStore, scope: dict | None = None, hitl: bool = True) -> str:
+Progress = Callable[[str], None]
+
+
+def _run(graph, payload, thread_id: str, on_progress: Progress) -> None:
+    """Run until the next review (or the end), passing node progress messages on."""
+    for event in graph.stream(payload, config(thread_id), stream_mode="custom"):
+        on_progress(event["progress"])
+
+
+def start(graph, store: BaseStore, scope: dict | None = None, hitl: bool = True, on_progress: Progress = print) -> str:
     thread_id = str(uuid.uuid4())
     store.put(NAMESPACE, thread_id, {"created": datetime.now(UTC).isoformat(), "scope": scope or {}, "hitl": hitl})
-    graph.invoke({"scope": scope or {}, "hitl": hitl}, config(thread_id))
+    _run(graph, {"scope": scope or {}, "hitl": hitl}, thread_id, on_progress)
     return thread_id
 
 
-def resume(graph, thread_id: str, decision: dict) -> None:
-    graph.invoke(Command(resume=decision), config(thread_id))
+def resume(graph, thread_id: str, decision: dict, on_progress: Progress = print) -> None:
+    _run(graph, Command(resume=decision), thread_id, on_progress)
 
 
 def pending(graph, thread_id: str) -> dict | None:

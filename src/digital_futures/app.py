@@ -5,6 +5,7 @@
 
 import json
 import sys
+import time
 
 import pandas as pd
 import streamlit as st
@@ -61,6 +62,21 @@ def from_table(df: pd.DataFrame, like: list) -> list:
     return out
 
 
+# --- progress -------------------------------------------------------------------------------
+
+
+def working(label: str):
+    """A live status panel; returns it and a callback that appends timed progress lines."""
+    status = st.status(label, expanded=True)
+    started = time.monotonic()
+
+    def on_progress(message: str) -> None:
+        status.write(f"`{time.monotonic() - started:>4.0f}s` {message}")
+        status.update(label=message, expanded=True)
+
+    return status, on_progress
+
+
 # --- views -----------------------------------------------------------------------------------
 
 
@@ -91,8 +107,9 @@ def new_run_form(graph, store) -> None:
                 "seed_drivers": [s.strip() for s in seeds.splitlines() if s.strip()],
                 "target_drivers": int(target),
             }
-            with st.spinner("Scanning for drivers of change (several minutes)…"):
-                st.query_params["run"] = runs.start(graph, store, scope, hitl)
+            status, on_progress = working("Starting…")
+            st.query_params["run"] = runs.start(graph, store, scope, hitl, on_progress)
+            status.update(state="complete")
             st.rerun()
 
 
@@ -114,8 +131,9 @@ def review_panel(graph, thread_id: str, request: dict, round_: int) -> None:
             decision = {"action": "revise", "feedback": feedback.strip()}
 
     if decision:
-        with st.spinner("Working…"):
-            runs.resume(graph, thread_id, decision)
+        status, on_progress = working("Working…")
+        runs.resume(graph, thread_id, decision, on_progress)
+        status.update(state="complete")
         st.rerun()
 
 

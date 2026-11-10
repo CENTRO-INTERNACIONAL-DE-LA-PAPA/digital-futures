@@ -8,6 +8,7 @@ from langchain.chat_models import init_chat_model
 from pydantic import BaseModel, Field
 
 from digital_futures.config import settings
+from digital_futures.progress import reporter
 from digital_futures.state import State, Steeple
 from digital_futures.tools import find_papers, web_search
 
@@ -72,14 +73,39 @@ def task(state: State) -> str:
     return "\n".join(lines)
 
 
+SEARCH_LABELS = {"tavily_search": "web", "find_papers": "papers"}
+
+
 def research(prompt: str) -> list[dict]:
+    report = reporter()
     model = init_chat_model(settings.reasoning_model, max_tokens=32_000)
     # ProviderStrategy = native JSON-schema output; Opus 5.5 rejects the forced tool calls of the default strategy.
     agent = create_agent(
         model, tools=[web_search(), find_papers], system_prompt=SYSTEM, response_format=ProviderStrategy(Drivers)
     )
-    result = agent.invoke({"messages": [{"role": "user", "content": prompt}]}, {"recursion_limit": 100})
-    return [d.model_dump() for d in result["structured_response"].drivers]
+
+    report("Scanning the web and the literature for drivers of change…")
+    searches, result = 0, {}
+    stream = agent.stream(
+        {"messages": [{"role": "user", "content": prompt}]},
+        {"recursion_limit": 100},
+        stream_mode=["updates", "values"],
+    )
+    for mode, chunk in stream:
+        if mode == "values":
+            result = chunk
+        elif "tools" in chunk:
+            report(f"Read results of {searches} searches; thinking…")
+        else:
+            for message in (chunk.get("model") or {}).get("messages", []):
+                for call in getattr(message, "tool_calls", []):
+                    searches += 1
+                    label = SEARCH_LABELS.get(call["name"], call["name"])
+                    report(f"Search {searches} · {label}: {call['args'].get('query', '')}")
+
+    found = [d.model_dump() for d in result["structured_response"].drivers]
+    report(f"Done: {len(found)} drivers from {searches} searches.")
+    return found
 
 
 def drivers(state: State) -> dict:

@@ -14,13 +14,13 @@ into a LangGraph application.
 | Node 4 | AI pre-scores with evidence, humans adjust. Split in two passes (4a impact + uncertainty, then 4b policy attention) |
 | UI | Web app from the start (Streamlit), plus a terminal runner for development |
 | Search | Tavily for web signals; Asta (`asta literature find`) for papers |
-| Models | Through OpenRouter: Opus 5.5 (`anthropic/claude-opus-5.5`) for reasoning steps, Gemini 3.8 Flash (`google/gemini-3.8-flash`) for narratives; configurable by env var |
+| Models | Through OpenRouter: Gemini 3.8 Flash (`google/gemini-3.8-flash`) for reasoning, narratives and grading (chosen 2026-11-10); configurable by env var. Claude models also work for the agents but not as the grader |
 | Time frame | 2026 → 2065 |
 | Axis sets | Their number follows the clusters, not a fixed 3 (exact rule settled in phase 6) |
 | Narratives | For all quadrants |
 | Drivers | Target about 80 per run (editable in the scope form) |
-| Structured output | Native JSON schema: `config.chat_model` marks models as supporting it, because Opus 5.5 rejects forced tool calls |
-| Rubric grader | Gemini 3.8 Flash (`DF_GRADER_MODEL`): another model family than the agent, and Anthropic models reject the grader schema's `oneOf` |
+| Structured output | Native JSON schema: `config.chat_model` marks models as supporting it, because Claude models reject forced tool calls |
+| Rubric grader | Gemini 3.8 Flash (`DF_GRADER_MODEL`): Anthropic models reject the grader schema's `oneOf` |
 
 ## Lessons from the probes → design rules
 
@@ -63,14 +63,14 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | # | Node | Engine |
 | --- | --- | --- |
 | 1 | `scope` | No LLM: defaults or form input (theme, geography, current/horizon year, seed drivers) |
-| 2 | `drivers` | Opus 5.5 + Tavily + Asta tools |
+| 2 | `drivers` | Reasoning model + Tavily + Asta tools |
 | 3 | `clusters` | deepagent + `RubricMiddleware` (rules 4) |
-| 4a | `score_impact` | Opus 5.5: impact and uncertainty 1–5 per driver, with evidence |
-| 4b | `score_policy` | Opus 5.5 + Tavily: attention in policy arenas 1–5, with evidence |
-| 5 | `critical` | Opus 5.5: most uncertain, highest impact, then least discussed |
+| 4a | `score_impact` | Reasoning model: impact and uncertainty 1–5 per driver, with evidence |
+| 4b | `score_policy` | Reasoning model + Tavily: attention in policy arenas 1–5, with evidence |
+| 5 | `critical` | Reasoning model: most uncertain, highest impact, then least discussed |
 | 6 | `axes` | deepagent + `RubricMiddleware` (rule 6) |
-| 7 | `quadrants` | Opus 5.5: four quadrants per axis set |
-| 8 | `narratives` | Gemini: one narrative per quadrant, four personas |
+| 7 | `quadrants` | Reasoning model: four quadrants per axis set |
+| 8 | `narratives` | Narrative model: one narrative per quadrant, four personas |
 
 ### Node 4 operational definitions (to validate with Marieke)
 
@@ -88,7 +88,7 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | 0 ✅ | Repo setup: deps, `.env.example`, Postgres compose, `langgraph.json` | `uv sync` and `docker compose up` work |
 | 1 ✅ | Skeleton: state, review loop, 8 stub nodes, Postgres persistence, terminal runner | A full run with simulated human answers passes in tests |
 | 2 ✅ | Web app shell (Streamlit): scope form, review panel per step, thread resume | A human can drive the stub graph in the browser |
-| 3 ✅ | Node 2 for real: Tavily + Asta tools, Opus 5.5 | Real drivers with sources |
+| 3 ✅ | Node 2 for real: Tavily + Asta tools | Real drivers with sources |
 | 4 ✅ | Node 3 deepagent clustering + rubric | Clusters pass rule 4 |
 | 5 | Nodes 4a, 4b, 5 | Scores with evidence; human-adjustable table in the UI |
 | 6 | Node 6 deepagent axes + rubric, node 7 | Axes pass rule 6; quadrants for each set |

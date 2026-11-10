@@ -1,4 +1,4 @@
-"""Node 4: AI pre-scores, humans adjust. TODO(phase 5): Opus + evidence.
+"""Node 4: AI pre-scores, humans adjust. TODO(phase 5): reasoning model + evidence.
 
 4a scores impact and uncertainty; 4b adds attention in policy arenas, separately,
 so "least discussed" does not crowd out relevance.

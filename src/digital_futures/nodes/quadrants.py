@@ -1,4 +1,4 @@
-"""Node 7: all four quadrants of every axis set. TODO(phase 6): Opus."""
+"""Node 7: all four quadrants of every axis set. TODO(phase 6): reasoning model."""
 
 from digital_futures.state import State
 

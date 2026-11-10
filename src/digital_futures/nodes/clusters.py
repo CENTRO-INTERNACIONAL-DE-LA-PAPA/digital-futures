@@ -7,7 +7,8 @@ from deepagents.middleware.rubric import RubricMiddleware
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from pydantic import BaseModel
 
-from digital_futures.config import chat_model, settings, with_retries
+from digital_futures.config import settings
+from digital_futures.llm import chat_model, with_retries
 from digital_futures.progress import reporter
 from digital_futures.state import Driver, State
 
@@ -16,11 +17,14 @@ SYSTEM = """You are a foresight analyst. Group drivers of change into clusters f
 - Cluster by interconnection: drivers belong together when they influence each other or share
   a causal mechanism. Do not cluster by STEEPLE category or by broad theme.
 - Keep clusters specific. Generic clusters such as "Technological innovation" or "Resource
-  governance" lose the detail that makes drivers useful. Prefer several small clusters to one
-  broad one; a driver that fits nowhere can stand alone.
+  governance" lose the detail that makes drivers useful.
+- Do not fragment either: most clusters hold 3 to 6 drivers, so expect roughly one cluster per
+  4 drivers. A driver stands alone only when it truly connects to no other driver.
 - Name each cluster neutrally (no good/bad framing) and explain in the rationale how its
   drivers are connected.
-- Use every driver id exactly once."""
+- Use every driver id exactly once.
+
+Answer directly with the final clustering. Do not use files, to-do lists or sub-agents."""
 
 RUBRIC = """1. Every cluster name is specific to its drivers; no generic label that would fit any scan
    (e.g. "Technological innovation", "Climate change", "Resource governance").
@@ -30,7 +34,9 @@ RUBRIC = """1. Every cluster name is specific to its drivers; no generic label t
    than 8 drivers, and no rationale merely lists unrelated topics.
 4. The clustering is not STEEPLE categories in disguise: clusters are defined by mechanisms,
    and most clusters with 3 or more drivers mix STEEPLE categories.
-5. Cluster names and rationales are neutral: no normative framing as good or bad."""
+5. Cluster names and rationales are neutral: no normative framing as good or bad.
+6. The clustering is not fragmented: at most one cluster in ten holds a single driver, and
+   there are no more clusters than one per 3 drivers."""
 
 MAX_GRADER_CHARS = 3_800  # the grader truncates each transcript message at 4,000 characters
 
@@ -116,7 +122,7 @@ def research(prompt: str, drivers: list[Driver]) -> list[dict]:
         on_evaluation=on_evaluation,
     )
     agent = create_deep_agent(
-        model=chat_model(settings.reasoning_model, max_tokens=16_000),
+        model=chat_model(settings.reasoning_model),
         system_prompt=SYSTEM,
         middleware=[grader],
         response_format=Clusters,

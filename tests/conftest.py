@@ -1,9 +1,13 @@
 """Keep tests offline: replace the AI calls with fakes."""
 
 import importlib
+import os
 import re
+import tempfile
 
 import pytest
+
+os.environ["DF_LOG_FILE"] = os.path.join(tempfile.mkdtemp(), "test.log")  # before the app is imported
 
 from digital_futures.progress import reporter
 

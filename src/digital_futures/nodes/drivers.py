@@ -5,7 +5,8 @@ import json
 from langchain.agents import create_agent
 from pydantic import BaseModel, Field
 
-from digital_futures.config import chat_model, settings, with_retries
+from digital_futures.config import settings
+from digital_futures.llm import chat_model, with_retries
 from digital_futures.progress import reporter
 from digital_futures.state import State, Steeple
 from digital_futures.tools import find_papers, web_search
@@ -76,7 +77,7 @@ SEARCH_LABELS = {"tavily_search": "web", "find_papers": "papers"}
 
 def research(prompt: str) -> list[dict]:
     report = reporter()
-    model = chat_model(settings.reasoning_model, max_tokens=32_000)
+    model = chat_model(settings.reasoning_model)
     agent = create_agent(model, tools=[web_search(), find_papers], system_prompt=SYSTEM, response_format=Drivers)
 
     def scan() -> dict:

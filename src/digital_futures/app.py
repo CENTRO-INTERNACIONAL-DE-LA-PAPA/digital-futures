@@ -11,6 +11,7 @@ import pandas as pd
 import streamlit as st
 
 from digital_futures import runs
+from digital_futures.config import settings
 from digital_futures.graph import STEPS, build_graph
 from digital_futures.nodes.scope import DEFAULT_SCOPE
 from digital_futures.persistence import connect
@@ -153,6 +154,18 @@ def review_panel(graph, thread_id: str, request: dict, round_: int) -> None:
         advance(graph, thread_id, "Working…", lambda on_progress: runs.resume(graph, thread_id, decision, on_progress))
 
 
+def activity_log() -> None:
+    """The tail of the log file: steps, AI calls with tokens and cost, failures."""
+    with st.expander("Activity log"):
+        if not settings.log_file.exists():
+            st.caption("Nothing logged yet.")
+            return
+        lines = settings.log_file.read_text(encoding="utf-8").splitlines()
+        spent = sum(float(part[1:]) for line in lines if "AI call" in line for part in line.split(" | ") if part.startswith("$"))
+        st.caption(f"{settings.log_file} · AI spend recorded in this log: ${spent:.2f}")
+        st.code("\n".join(lines[-80:]), language=None, wrap_lines=True)
+
+
 def failed_panel(graph, thread_id: str, step: str, error: str) -> None:
     st.header(TITLES.get(step, step))
     st.error("This step did not finish. Retry runs only this step again; everything before it is kept.")
@@ -190,6 +203,7 @@ def run_view(graph, thread_id: str) -> None:
         st.header("Scenarios")
         show_narratives(values.get("narratives", []))
 
+    activity_log()
     with st.expander("All results so far"):
         st.json({k: v for k, v in values.items() if k not in {"feedback"}}, expanded=False)
 

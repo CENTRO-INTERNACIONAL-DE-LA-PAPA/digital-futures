@@ -7,7 +7,7 @@ reviewer's feedback asks for it.
 
 from pydantic import BaseModel
 
-from digital_futures.config import ask_all
+from digital_futures.llm import ask_all
 from digital_futures.nodes.scoring import groups
 from digital_futures.progress import reporter
 from digital_futures.state import Score, State

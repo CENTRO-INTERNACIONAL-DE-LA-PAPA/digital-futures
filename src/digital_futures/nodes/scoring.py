@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from pydantic import BaseModel, Field
 
-from digital_futures.config import ask_all
+from digital_futures.llm import ask_all
 from digital_futures.progress import reporter
 from digital_futures.state import Cluster, Driver, State
 from digital_futures.tools import web_search

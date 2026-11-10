@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from langgraph.store.base import BaseStore
 from langgraph.types import Command
 
+from digital_futures.config import log
+
 NAMESPACE = ("runs",)
 Progress = Callable[[str], None]
 
@@ -17,8 +19,14 @@ def config(thread_id: str) -> dict:
 
 def _run(graph, payload, thread_id: str, on_progress: Progress) -> None:
     """Run until the next review (or the end), passing node progress messages on."""
-    for event in graph.stream(payload, config(thread_id), stream_mode="custom"):
-        on_progress(event["progress"])
+    try:
+        for event in graph.stream(payload, config(thread_id), stream_mode="custom"):
+            on_progress(event["progress"])
+    except Exception:
+        log.exception("Run %s stopped with an error", thread_id)
+        raise
+    waiting = pending(graph, thread_id)
+    log.info("Run %s: %s", thread_id, f"waiting for review of {waiting['step']}" if waiting else "finished")
 
 
 def create(store: BaseStore, scope: dict | None = None, hitl: bool = True) -> str:
@@ -30,15 +38,18 @@ def create(store: BaseStore, scope: dict | None = None, hitl: bool = True) -> st
 
 def start(graph, store: BaseStore, thread_id: str, on_progress: Progress = print) -> None:
     meta = store.get(NAMESPACE, thread_id).value
+    log.info("Run %s: start, scope %s", thread_id, meta["scope"])
     _run(graph, {"scope": meta["scope"], "hitl": meta["hitl"]}, thread_id, on_progress)
 
 
 def resume(graph, thread_id: str, decision: dict, on_progress: Progress = print) -> None:
+    log.info("Run %s: review answered with %s %s", thread_id, decision["action"], decision.get("feedback", ""))
     _run(graph, Command(resume=decision), thread_id, on_progress)
 
 
 def retry(graph, thread_id: str, on_progress: Progress = print) -> None:
     """Run a failed step again from its last checkpoint."""
+    log.info("Run %s: retry of the failed step", thread_id)
     _run(graph, None, thread_id, on_progress)
 
 
@@ -50,6 +61,7 @@ def reopen(graph, thread_id: str, step: str) -> None:
     """
     for snapshot in graph.get_state_history(config(thread_id)):
         if snapshot.next == (f"review_{step}",):
+            log.info("Run %s: reopened at the review of %s", thread_id, step)
             graph.update_state(snapshot.config, {}, as_node=step)
             _run(graph, None, thread_id, lambda message: None)
             return

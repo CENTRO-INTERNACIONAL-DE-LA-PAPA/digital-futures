@@ -1,14 +1,21 @@
-"""Progress messages from inside a node, streamed to the UI (stream_mode="custom")."""
+"""Progress messages from inside a node: logged, and streamed to the UI (stream_mode="custom")."""
 
 from collections.abc import Callable
 
 from langgraph.config import get_stream_writer
 
+from digital_futures.config import log
+
 
 def reporter() -> Callable[[str], None]:
-    """Get it once at the start of a node; it is a no-op when called outside a graph."""
+    """Get it once at the start of a node. Outside a graph the messages are only logged."""
     try:
         write = get_stream_writer()
     except RuntimeError:
-        return lambda message: None
-    return lambda message: write({"progress": message})
+        return log.info
+
+    def report(message: str) -> None:
+        log.info(message)
+        write({"progress": message})
+
+    return report

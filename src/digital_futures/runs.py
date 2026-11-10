@@ -34,6 +34,24 @@ def resume(graph, thread_id: str, decision: dict, on_progress: Progress = print)
     _run(graph, Command(resume=decision), thread_id, on_progress)
 
 
+def reopen(graph, thread_id: str, step: str) -> None:
+    """Go back to the review of `step`, keeping its latest output; later steps will run again.
+
+    Forks the run from the checkpoint where that review was waiting, so no AI step is re-run.
+    The old branch stays in the checkpoint history.
+    """
+    for snapshot in graph.get_state_history(config(thread_id)):
+        if snapshot.next == (f"review_{step}",):
+            graph.update_state(snapshot.config, {}, as_node=step)
+            _run(graph, None, thread_id, lambda message: None)
+            return
+    raise ValueError(f"Step {step!r} has not been reached in run {thread_id}")
+
+
+def state(graph, thread_id: str) -> dict:
+    return graph.get_state(config(thread_id)).values
+
+
 def pending(graph, thread_id: str) -> dict | None:
     """The review the run is waiting for ({"step", "data"}), or None."""
     interrupts = graph.get_state(config(thread_id)).interrupts

@@ -27,6 +27,10 @@ TITLES = {
 }
 
 
+# Steps whose AI is not connected yet: they return placeholder data.
+PLACEHOLDERS = {"clusters", "score_impact", "score_policy", "critical", "axes", "quadrants", "narratives"}
+
+
 @st.cache_resource
 def backend():
     checkpointer, store = connect()
@@ -116,6 +120,8 @@ def new_run_form(graph, store) -> None:
 def review_panel(graph, thread_id: str, request: dict, round_: int) -> None:
     step, data = request["step"], request["data"]
     st.header(TITLES[step])
+    if step in PLACEHOLDERS:
+        st.warning("Placeholder step: the AI for this step is not connected yet, so this is dummy data.")
     if step == "narratives":
         show_narratives(data)
 
@@ -144,9 +150,15 @@ def run_view(graph, thread_id: str) -> None:
 
     with st.sidebar:
         st.subheader("Progress")
+        st.caption("Click a finished step to go back to its review.")
         for step, _, _ in STEPS:
-            mark = "✅" if step in done else ("👉" if request and request["step"] == step else "▫️")
-            st.write(f"{mark} {TITLES[step]}")
+            label = TITLES[step] + (" (placeholder)" if step in PLACEHOLDERS else "")
+            if step in done:
+                if st.button(f"✅ {label}", key=f"reopen-{step}", type="tertiary"):
+                    runs.reopen(graph, thread_id, step)
+                    st.rerun()
+            else:
+                st.write(f"{'👉' if request and request['step'] == step else '▫️'} {label}")
 
     if request:
         review_panel(graph, thread_id, request, len(values.get("reviews", [])))

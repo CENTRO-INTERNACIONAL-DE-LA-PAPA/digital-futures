@@ -1,4 +1,4 @@
-"""Start, list and resume scenario runs. Each run is a LangGraph thread, registered in the store."""
+"""Create, run, resume, reopen and retry scenario runs. Each run is a LangGraph thread, registered in the store."""
 
 import uuid
 from collections.abc import Callable
@@ -8,13 +8,11 @@ from langgraph.store.base import BaseStore
 from langgraph.types import Command
 
 NAMESPACE = ("runs",)
+Progress = Callable[[str], None]
 
 
 def config(thread_id: str) -> dict:
     return {"configurable": {"thread_id": thread_id}}
-
-
-Progress = Callable[[str], None]
 
 
 def _run(graph, payload, thread_id: str, on_progress: Progress) -> None:
@@ -23,15 +21,25 @@ def _run(graph, payload, thread_id: str, on_progress: Progress) -> None:
         on_progress(event["progress"])
 
 
-def start(graph, store: BaseStore, scope: dict | None = None, hitl: bool = True, on_progress: Progress = print) -> str:
+def create(store: BaseStore, scope: dict | None = None, hitl: bool = True) -> str:
+    """Register a run before it starts, so a failure in its first step does not lose it."""
     thread_id = str(uuid.uuid4())
     store.put(NAMESPACE, thread_id, {"created": datetime.now(UTC).isoformat(), "scope": scope or {}, "hitl": hitl})
-    _run(graph, {"scope": scope or {}, "hitl": hitl}, thread_id, on_progress)
     return thread_id
+
+
+def start(graph, store: BaseStore, thread_id: str, on_progress: Progress = print) -> None:
+    meta = store.get(NAMESPACE, thread_id).value
+    _run(graph, {"scope": meta["scope"], "hitl": meta["hitl"]}, thread_id, on_progress)
 
 
 def resume(graph, thread_id: str, decision: dict, on_progress: Progress = print) -> None:
     _run(graph, Command(resume=decision), thread_id, on_progress)
+
+
+def retry(graph, thread_id: str, on_progress: Progress = print) -> None:
+    """Run a failed step again from its last checkpoint."""
+    _run(graph, None, thread_id, on_progress)
 
 
 def reopen(graph, thread_id: str, step: str) -> None:
@@ -56,6 +64,15 @@ def pending(graph, thread_id: str) -> dict | None:
     """The review the run is waiting for ({"step", "data"}), or None."""
     interrupts = graph.get_state(config(thread_id)).interrupts
     return interrupts[0].value if interrupts else None
+
+
+def failed(graph, thread_id: str) -> tuple[str, str] | None:
+    """(step, error) when the run stopped inside a step instead of at a review or the end."""
+    snapshot = graph.get_state(config(thread_id))
+    if not snapshot.next or snapshot.interrupts:
+        return None
+    errors = [t.error for t in snapshot.tasks if t.error]
+    return snapshot.next[0], str(errors[0]) if errors else "The step was interrupted before it finished."
 
 
 def listing(store: BaseStore) -> list[tuple[str, dict]]:

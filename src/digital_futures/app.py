@@ -81,6 +81,20 @@ def working(label: str):
     return status, on_progress
 
 
+def advance(graph, thread_id: str, label: str, action) -> None:
+    """Run `action(on_progress)` with a live panel. A failed step is kept in the run and offered for retry."""
+    status, on_progress = working(label)
+    try:
+        action(on_progress)
+    except Exception:
+        if not runs.failed(graph, thread_id):
+            raise
+        status.update(state="error")
+    else:
+        status.update(state="complete")
+    st.rerun()
+
+
 # --- views -----------------------------------------------------------------------------------
 
 
@@ -111,10 +125,9 @@ def new_run_form(graph, store) -> None:
                 "seed_drivers": [s.strip() for s in seeds.splitlines() if s.strip()],
                 "target_drivers": int(target),
             }
-            status, on_progress = working("Starting…")
-            st.query_params["run"] = runs.start(graph, store, scope, hitl, on_progress)
-            status.update(state="complete")
-            st.rerun()
+            thread_id = runs.create(store, scope, hitl)
+            st.query_params["run"] = thread_id
+            advance(graph, thread_id, "Starting…", lambda on_progress: runs.start(graph, store, thread_id, on_progress))
 
 
 def review_panel(graph, thread_id: str, request: dict, round_: int) -> None:
@@ -137,15 +150,22 @@ def review_panel(graph, thread_id: str, request: dict, round_: int) -> None:
             decision = {"action": "revise", "feedback": feedback.strip()}
 
     if decision:
-        status, on_progress = working("Working…")
-        runs.resume(graph, thread_id, decision, on_progress)
-        status.update(state="complete")
-        st.rerun()
+        advance(graph, thread_id, "Working…", lambda on_progress: runs.resume(graph, thread_id, decision, on_progress))
+
+
+def failed_panel(graph, thread_id: str, step: str, error: str) -> None:
+    st.header(TITLES.get(step, step))
+    st.error("This step did not finish. Retry runs only this step again; everything before it is kept.")
+    with st.expander("Error details"):
+        st.code(error, wrap_lines=True)
+    if st.button("Retry", type="primary"):
+        advance(graph, thread_id, "Retrying…", lambda on_progress: runs.retry(graph, thread_id, on_progress))
 
 
 def run_view(graph, thread_id: str) -> None:
     values = graph.get_state(runs.config(thread_id)).values
     request = runs.pending(graph, thread_id)
+    failure = runs.failed(graph, thread_id)
     done = [r["step"] for r in values.get("reviews", []) if r["action"] != "revise"]
 
     with st.sidebar:
@@ -157,11 +177,15 @@ def run_view(graph, thread_id: str) -> None:
                 if st.button(f"✅ {label}", key=f"reopen-{step}", type="tertiary"):
                     runs.reopen(graph, thread_id, step)
                     st.rerun()
+            elif failure and failure[0] == step:
+                st.write(f"❌ {label}")
             else:
                 st.write(f"{'👉' if request and request['step'] == step else '▫️'} {label}")
 
     if request:
         review_panel(graph, thread_id, request, len(values.get("reviews", [])))
+    elif failure:
+        failed_panel(graph, thread_id, *failure)
     else:
         st.header("Scenarios")
         show_narratives(values.get("narratives", []))

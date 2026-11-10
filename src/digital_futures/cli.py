@@ -38,8 +38,14 @@ def edit_json(data):
 def main() -> None:
     checkpointer, store = connect()
     graph = build_graph(checkpointer, store)
-    thread_id = sys.argv[1] if len(sys.argv) > 1 else runs.start(graph, store)
-    print(f"Run: {thread_id}")
+    if len(sys.argv) > 1:
+        thread_id = sys.argv[1]
+        if runs.failed(graph, thread_id):
+            runs.retry(graph, thread_id)
+    else:
+        thread_id = runs.create(store)
+        print(f"Run: {thread_id}")
+        runs.start(graph, store, thread_id)
 
     while request := runs.pending(graph, thread_id):
         runs.resume(graph, thread_id, ask(request["step"], request["data"]))

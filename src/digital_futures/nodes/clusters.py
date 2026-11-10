@@ -7,7 +7,7 @@ from deepagents.middleware.rubric import RubricMiddleware
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from pydantic import BaseModel
 
-from digital_futures.config import chat_model, settings
+from digital_futures.config import chat_model, settings, with_retries
 from digital_futures.progress import reporter
 from digital_futures.state import Driver, State
 
@@ -122,7 +122,9 @@ def research(prompt: str, drivers: list[Driver]) -> list[dict]:
         response_format=Clusters,
     )
     report(f"Clustering {len(drivers)} drivers…")
-    result = agent.invoke({"messages": [HumanMessage(prompt)], "rubric": RUBRIC}, {"recursion_limit": 100})
+    result = with_retries(
+        lambda: agent.invoke({"messages": [HumanMessage(prompt)], "rubric": RUBRIC}, {"recursion_limit": 100}), report
+    )
     clusters = [c.model_dump() for c in result["structured_response"].clusters]
     report(f"Done: {len(clusters)} clusters.")
     return clusters

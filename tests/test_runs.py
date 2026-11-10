@@ -11,7 +11,8 @@ def test_progress_reaches_the_caller_and_run_is_registered():
     store = InMemoryStore()
     graph = build_graph(InMemorySaver(), store)
     messages = []
-    thread_id = runs.start(graph, store, on_progress=messages.append)
+    thread_id = runs.create(store)
+    runs.start(graph, store, thread_id, on_progress=messages.append)
     assert messages == ["fake search"]
     assert runs.pending(graph, thread_id)["step"] == "drivers"
     assert runs.listing(store)[0][0] == thread_id
@@ -25,7 +26,8 @@ def test_reopen_goes_back_to_an_earlier_review_without_rerunning_it():
     store = InMemoryStore()
     graph = build_graph(InMemorySaver(), store)
     messages = []
-    thread_id = runs.start(graph, store, on_progress=messages.append)
+    thread_id = runs.create(store)
+    runs.start(graph, store, thread_id, on_progress=messages.append)
     runs.resume(graph, thread_id, {"action": "revise", "feedback": "v2"}, messages.append)
     while request := runs.pending(graph, thread_id):
         runs.resume(graph, thread_id, {"action": "approve"}, messages.append)
@@ -43,6 +45,39 @@ def test_reopen_goes_back_to_an_earlier_review_without_rerunning_it():
 def test_reopen_unknown_step_fails():
     store = InMemoryStore()
     graph = build_graph(InMemorySaver(), store)
-    thread_id = runs.start(graph, store, on_progress=lambda m: None)
+    thread_id = runs.create(store)
+    runs.start(graph, store, thread_id, on_progress=lambda m: None)
     with pytest.raises(ValueError):
         runs.reopen(graph, thread_id, "axes")
+
+
+def test_failed_step_is_reported_and_retry_runs_only_that_step(monkeypatch):
+    import importlib
+
+    clusters_node = importlib.import_module("digital_futures.nodes.clusters")
+    real = clusters_node.research
+    calls = []
+
+    def flaky(prompt, drivers):
+        calls.append(1)
+        if len(calls) == 1:
+            raise RuntimeError("provider hiccup")
+        return real(prompt, drivers)
+
+    monkeypatch.setattr(clusters_node, "research", flaky)
+    store = InMemoryStore()
+    graph = build_graph(InMemorySaver(), store)
+    messages = []
+    thread_id = runs.create(store)
+    runs.start(graph, store, thread_id, on_progress=messages.append)
+
+    with pytest.raises(RuntimeError):
+        runs.resume(graph, thread_id, {"action": "approve"}, messages.append)
+    step, error = runs.failed(graph, thread_id)
+    assert step == "clusters" and "provider hiccup" in error
+    assert runs.pending(graph, thread_id) is None
+
+    runs.retry(graph, thread_id, messages.append)
+    assert runs.failed(graph, thread_id) is None
+    assert runs.pending(graph, thread_id)["step"] == "clusters"
+    assert messages == ["fake search"]  # drivers were not searched again

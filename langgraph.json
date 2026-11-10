@@ -1,0 +1,5 @@
+{
+  "dependencies": ["."],
+  "graphs": {"digital_futures": "./src/digital_futures/graph.py:graph"},
+  "env": ".env"
+}

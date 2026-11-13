@@ -12,7 +12,9 @@ into a LangGraph application.
 | Persistence | Postgres as checkpointer (`PostgresSaver`) and long-term store (`PostgresStore`), via `docker compose` |
 | Human in the loop | Every generating step is followed by a review step (LangGraph `interrupt`) |
 | Node 4 | AI pre-scores with evidence, humans adjust. Split in two passes (4a impact + uncertainty, then 4b policy attention) |
-| UI | Web app from the start (Streamlit), plus a terminal runner for development |
+| UI | React app (`frontend/`, Vite + TypeScript, no UI library) on a small FastAPI API (`api.py`); one purpose-built view per step. Replaced the Streamlit prototype on 2026-11-13. A terminal runner stays for development |
+| Saved results | Each step's result is saved per run under a hash of its inputs. Going back and continuing without changes reuses it (human edits included) at no AI cost |
+| Signals (6b) | After the axes: one web search per pole and one paper search per axis; the AI labels each pole as happening now, early signals or no signal found, citing only links from the results. Quadrants build on them |
 | Search | Tavily for web signals; Asta (`asta literature find`) for papers |
 | Models | Through OpenRouter: Gemini 3.8 Flash (`google/gemini-3.8-flash`) for reasoning, narratives and grading (chosen 2026-11-10); configurable by env var. Claude models also work for the agents but not as the grader |
 | Time frame | 2026 → 2065 |
@@ -49,7 +51,8 @@ These rules become prompts and grading rubrics:
 
 ```
 scope ─▶ drivers ⇄ review ─▶ clusters ⇄ review ─▶ score_impact ⇄ review ─▶ score_policy ⇄ review
-      ─▶ critical ⇄ review ─▶ axes ⇄ review ─▶ quadrants ⇄ review ─▶ narratives ⇄ review ─▶ END
+      ─▶ critical ⇄ review ─▶ axes ⇄ review ─▶ signals ⇄ review ─▶ quadrants ⇄ review
+      ─▶ narratives ⇄ review ─▶ END
 ```
 
 Each `review` node calls `interrupt()` with the step output. The human resumes with one of:
@@ -71,6 +74,7 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | 4b | `score_policy` | Reasoning model + Tavily: attention in policy arenas 1–5, with evidence |
 | 5 | `critical` | Reasoning model: most uncertain, highest impact, then least discussed |
 | 6 | `axes` | deepagent + `RubricMiddleware` (rules 6 and 7): sets of two axes, each with two neutral poles |
+| 6b | `signals` | Tavily per pole + Asta per axis, then the reasoning model: is each pole already visible today? |
 | 7 | `quadrants` | Reasoning model: four quadrants per axis set (title and short sketch), one question per set |
 | 8 | `narratives` | Narrative model: one question per quadrant, four first-person accounts of 100–140 words |
 
@@ -95,6 +99,7 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | 5 ✅ | Nodes 4a, 4b, 5 | Scores with evidence; human-adjustable table in the UI |
 | 6 ✅ | Node 6 deepagent axes + rubric, node 7 | Axes pass rule 6; quadrants for each set |
 | 7 ✅ | Node 8 narratives (Gemini) | Readable narratives per quadrant and persona |
+| 7b ✅ | Saved step results, signals step (6b), React app replacing Streamlit | Going back costs nothing; every step has a readable, editable view |
 | 8 | Research support: run log (timings, human edits), export to Markdown, experiment arms | Outputs usable for the working paper metrics |
 
 ## Open questions

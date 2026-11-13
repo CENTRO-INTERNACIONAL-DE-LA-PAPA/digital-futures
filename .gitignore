@@ -6,3 +6,5 @@ __pycache__/
 .asta/
 .claude/
 logs/
+frontend/node_modules/
+frontend/dist/

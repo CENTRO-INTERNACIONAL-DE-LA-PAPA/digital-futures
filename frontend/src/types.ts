@@ -1,0 +1,63 @@
+// The shapes the API returns: the same records as src/digital_futures/state.py.
+
+export type Source = { title: string; url: string };
+export type Scope = {
+  theme: string;
+  geography: string;
+  current_year: number;
+  horizon_year: number;
+  seed_drivers: string[];
+  target_drivers: number;
+  axis_sets: number;
+};
+export type Driver = { id: string; name: string; description: string; steeple: string; sources: Source[] };
+export type Cluster = { name: string; rationale: string; driver_ids: string[] };
+export type Score = {
+  driver_id: string;
+  name: string;
+  impact: number;
+  uncertainty: number;
+  evidence: string;
+  policy_attention?: number;
+  policy_evidence?: string;
+};
+export type Critical = {
+  driver_id: string;
+  name: string;
+  cluster: string;
+  impact: number;
+  uncertainty: number;
+  policy_attention: number;
+  rationale: string;
+};
+export type Axis = { driver_id: string; driver?: string; pole_a: string; pole_b: string };
+export type AxisSet = { name: string; x: Axis; y: Axis; rationale?: string };
+export type Signal = { axis_set: string; driver: string; pole: string; status: string; signals: string; sources: Source[] };
+export type Quadrant = { axis_set: string; x_pole: string; y_pole: string; title: string; sketch: string };
+export type Narrative = { axis_set?: string; title: string; personas: Record<string, string> };
+
+export type Values = {
+  scope?: Scope;
+  drivers?: Driver[];
+  clusters?: Cluster[];
+  scores?: Score[];
+  critical?: Critical[];
+  axis_sets?: AxisSet[];
+  signals?: Signal[];
+  quadrants?: Quadrant[];
+  narratives?: Narrative[];
+};
+
+export type Progress = { busy: boolean; working: string | null; elapsed: number; progress: { at: number; message: string }[] };
+export type Run = Progress & {
+  id: string;
+  values: Values;
+  pending: { step: string; data: any[] } | null;
+  failed: { step: string; error: string } | null;
+  done: string[];
+};
+export type RunMeta = { id: string; created: string; scope: Partial<Scope> };
+
+// Every step view gets the step's records, everything else in the run, and (when the step is
+// waiting for review) a way to change the records.
+export type ViewProps<T> = { data: T[]; values: Values; onChange?: (data: T[]) => void };

@@ -68,7 +68,8 @@
 cp .env.example .env          # add API keys
 docker compose up -d          # Postgres checkpointer + store
 uv sync
-uv run digital-futures-web    # web app (Streamlit)
+(cd frontend && npm install && npm run build)   # build the web app once (needs Node 20+)
+uv run digital-futures-web    # web app: http://localhost:8510 (React app + API)
 uv run digital-futures        # terminal runner (new run); pass a run id to resume
 uv run pytest
 ```

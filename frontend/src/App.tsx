@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { api } from "./api";
 import { STEPS, type Step } from "./steps";
 import type { Run, RunMeta, Scope } from "./types";
@@ -61,9 +61,12 @@ export default function App() {
   return (
     <div className="app">
       <aside className="rail">
-        <h1 className="brand">Digital Futures</h1>
+        <div>
+          <p className="brand">Digital Futures</p>
+          {run && <p className="brand-sub">{scope.theme}. {scope.geography}, {scope.current_year} to {scope.horizon_year}.</p>}
+        </div>
         <select className="run-picker" value={runId} onChange={(e) => setRunId(e.target.value)} aria-label="Run">
-          <option value="">＋ New run</option>
+          <option value="">New run…</option>
           {runs.map((r) => (
             <option key={r.id} value={r.id}>
               {r.created.slice(0, 16).replace("T", " ")} · {r.scope.geography ?? "Global South"} · {r.arm}
@@ -72,36 +75,43 @@ export default function App() {
         </select>
 
         {run && (
-          <nav className="stepper" aria-label="Steps">
+          <nav className="toc" aria-label="Steps">
             {STEPS.map((s) => {
               const done = run.done.includes(s.name) && working !== s;
               const state = run.failed?.step === s.name ? "failed" : working === s ? "working" : run.pending?.step === s.name ? "current" : done ? "done" : "todo";
               const size = (run.values[s.key] as unknown[] | undefined)?.length;
+              const meta = state === "current" ? "review" : state === "working" ? "working" : state === "failed" ? "failed" : done ? size : "";
               return (
-                <button key={s.name} className={`${state} ${shown === s.name ? "shown" : ""}`} disabled={state === "todo" || state === "working" || run.busy} onClick={() => setView(s.name)}>
-                  <span className="bullet">{state === "done" ? "✓" : state === "failed" ? "!" : s.n}</span>
-                  <span>
-                    {s.title}
-                    {done && size !== undefined && <small>{size} {s.key.replace("_", " ")}</small>}
-                    {state === "current" && <small>waiting for your review</small>}
-                    {state === "working" && <small>the AI is working…</small>}
-                  </span>
+                <button
+                  key={s.name}
+                  className={`${state} ${shown === s.name ? "shown" : ""}`}
+                  disabled={state === "todo" || state === "working" || run.busy}
+                  onClick={() => setView(s.name)}
+                  title={done && size !== undefined ? `${size} ${s.key.replace("_", " ")}` : undefined}
+                >
+                  <span className="toc-n">{s.n}</span>
+                  <span className="toc-title"><span>{s.title}</span></span>
+                  <span className="toc-meta">{meta}</span>
                 </button>
               );
             })}
+            <hr />
             <button className={`${finished ? "done" : "todo"} ${shown === "scenarios" ? "shown" : ""}`} disabled={!finished} onClick={() => setView("scenarios")}>
-              <span className="bullet">★</span>
-              <span>Scenarios</span>
+              <span className="toc-n" />
+              <span className="toc-title"><span>Scenarios</span></span>
+              <span className="toc-meta">{finished ? run.values.quadrants?.length : ""}</span>
             </button>
             <button className={`done ${shown === "report" ? "shown" : ""}`} disabled={run.busy} onClick={() => setView("report")}>
-              <span className="bullet">↓</span>
-              <span>Report and metrics</span>
+              <span className="toc-n" />
+              <span className="toc-title"><span>Report and metrics</span></span>
+              <span className="toc-meta" />
             </button>
           </nav>
         )}
 
         <button className="spend" onClick={() => setShowLog(true)} title="Open the activity log">
-          {spent === null ? "Activity log" : <>AI spend so far <b>${spent.toFixed(2)}</b></>}
+          {spent !== null && <em>AI spend so far <b>${spent.toFixed(2)}</b></em>}
+          <span>Activity log</span>
         </button>
       </aside>
 
@@ -133,12 +143,12 @@ export default function App() {
           />
         ) : shown === "scenarios" ? (
           <>
-            <Header n="★" title="Scenarios" what={`${run.values.quadrants?.length ?? 0} scenarios for ${scope.theme} in ${scope.geography}, ${scope.horizon_year}. AI-generated with human review: validate with domain experts before use.`} />
+            <Header label="Result" title="Scenarios" what={`${run.values.quadrants?.length ?? 0} scenarios for ${scope.theme} in ${scope.geography}, ${scope.horizon_year}. AI-generated with human review: validate with domain experts before use.`} />
             <Scenarios values={run.values} />
           </>
         ) : shown === "report" ? (
           <>
-            <Header n="↓" title="Report and metrics" what="Download what this run produced, and see what it took: time, AI cost, and how much you changed." />
+            <Header label="Result" title="Report and metrics" what="Download what this run produced, and see what it took: time, AI cost, and how much you changed." />
             <Report runId={run.id} />
           </>
         ) : (
@@ -151,12 +161,15 @@ export default function App() {
   );
 }
 
-function Header({ n, title, what }: { n: string; title: string; what: string }) {
+function Header({ label, title, what, note }: { label: string; title: string; what: string; note?: ReactNode }) {
   return (
     <header className="page-head">
-      <p className="eyebrow">{n === "★" || n === "↓" ? "Result" : `Step ${n}`}</p>
-      <h1>{title}</h1>
-      <p className="lede">{what}</p>
+      <div>
+        <p className="kicker">{label}</p>
+        <h1>{title}</h1>
+        <p className="lede">{what}</p>
+      </div>
+      {note && <aside className="note">{note}</aside>}
     </header>
   );
 }
@@ -180,15 +193,21 @@ function StepPage(props: {
 
   return (
     <>
-      <Header n={step.n} title={step.title} what={step.what(scope)} />
-      {reviewing ? (
-        <p className="callout"><b>What to check.</b> {step.check}</p>
-      ) : (
-        <p className="callout past">
-          You are looking at a finished step. To change it, <button className="link" onClick={onReopen}>reopen this step</button>.
-          The steps after it will run again, and where nothing changed their saved results are reused at no cost.
-        </p>
-      )}
+      <Header
+        label={`Step ${step.n}`}
+        title={step.title}
+        what={step.what(scope)}
+        note={
+          reviewing ? (
+            <><mark>What to check</mark> {step.check}</>
+          ) : (
+            <>
+              <b>This step is finished.</b> To change it, <button className="link" onClick={onReopen}>reopen this step</button>. The steps
+              after it will run again; where nothing changed, their saved results are reused at no cost.
+            </>
+          )
+        }
+      />
 
       <step.View data={reviewing ? draft : ((run.values[step.key] as any[]) ?? [])} values={run.values} onChange={reviewing ? setDraft : undefined} sendBack={reviewing ? onSendBack : undefined} />
 
@@ -207,7 +226,7 @@ function StepPage(props: {
               <button className="primary" onClick={() => onDecision(changed ? { action: "edit", data: draft } : { action: "approve" })}>
                 {changed ? "Save my changes and continue" : "Approve and continue"}
               </button>
-              <span className="muted">{next ? `Next: ${next.n} · ${next.title} (${next.takes})` : "This is the last step."}</span>
+              <span className="hint">{next ? `Next: ${next.n} · ${next.title} (${next.takes})` : "This is the last step."}</span>
               <span className="spacer" />
               {changed && <button onClick={() => setDraft(run.pending!.data)}>Undo my changes</button>}
               <button onClick={() => setRevising(true)}>Ask the AI to revise…</button>
@@ -223,14 +242,15 @@ function Working({ run, step }: { run: Run; step: Step | null }) {
   const last = run.progress.at(-1);
   return (
     <section className="working">
-      <div className="spinner" aria-hidden />
-      <h1>{step ? `${step.n} · ${step.title}` : "Working…"}</h1>
+      <p className="kicker">{step ? `Step ${step.n}` : "Starting"} · the AI is working</p>
+      <h1>{step?.title ?? "Working…"}</h1>
+      <div className="bar" aria-hidden />
       <p className="lede">{last?.message ?? "Starting…"}</p>
-      <p className="muted">
-        {Math.round(run.elapsed)} s so far{step && <> · this step usually takes {step.takes}</>}. You can leave this page; the work continues.
+      <p className="hint">
+        <span className="mono">{Math.round(run.elapsed)} s</span> so far{step && <>; this step usually takes {step.takes}</>}. You can leave this page: the work continues.
       </p>
       <ol className="progress-lines">
-        {run.progress.slice(-12).map((p, i) => (
+        {run.progress.slice(-12).reverse().map((p, i) => (
           <li key={i}><time>{Math.round(p.at)} s</time> {p.message}</li>
         ))}
       </ol>
@@ -242,7 +262,8 @@ function Failed({ run, onRetry }: { run: Run; onRetry: () => void }) {
   const step = STEPS.find((s) => s.name === run.failed!.step);
   return (
     <section className="working">
-      <h1>{step ? `${step.n} · ${step.title}` : run.failed!.step} did not finish</h1>
+      <p className="kicker">{step ? `Step ${step.n}` : "Step"} · stopped</p>
+      <h1>{step?.title ?? run.failed!.step} did not finish</h1>
       <p className="lede">Everything before this step is kept. Retry runs only this step again.</p>
       <pre className="error-detail">{run.failed!.error}</pre>
       <button className="primary" onClick={onRetry}>Retry this step</button>
@@ -277,8 +298,8 @@ function NewRun({ onCreated, onError }: { onCreated: (id: string) => void; onErr
 
   return (
     <>
-      <Header n="1" title="Scope of a new run" what="Set the theme, the place and the time frame. The AI then works step by step, and waits for your review after each step." />
-      <form className="card form" onSubmit={(e) => { e.preventDefault(); start(); }}>
+      <Header label="Step 1" title="Scope of a new run" what="Set the theme, the place and the time frame. The AI then works step by step, and waits for your review after each step." />
+      <form className="form" onSubmit={(e) => { e.preventDefault(); start(); }}>
         {field("Theme", "theme")}
         {field("Geography", "geography")}
         <div className="pair">

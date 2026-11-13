@@ -1,16 +1,16 @@
 // Small building blocks shared by the step views.
 
-import { useLayoutEffect, useRef, type ReactNode } from "react";
+import { Fragment, useLayoutEffect, useRef, type ReactNode } from "react";
 import type { AxisSet, Source } from "./types";
 
 export const STEEPLE: Record<string, string> = {
-  social: "#c2410c",
-  technological: "#1d4ed8",
-  economic: "#b45309",
-  environmental: "#15803d",
-  political: "#be185d",
-  legal: "#6d28d9",
-  ethical: "#0e7490",
+  social: "#c4572a",
+  technological: "#2b59c3",
+  economic: "#b0820f",
+  environmental: "#2f7d4f",
+  political: "#a8326b",
+  legal: "#6a4bb5",
+  ethical: "#1c7c8c",
 };
 
 /** Replace item `i` of a list with a changed copy. */
@@ -42,11 +42,11 @@ export function Editable(props: { value: string; onChange?: (value: string) => v
   );
 }
 
-/** A 1-5 score as five dots; click a dot to change the score. */
-export function Dots(props: { value?: number; onChange?: (value: number) => void; label: string }) {
+/** A 1-5 score as five segments; click a segment to change the score. */
+export function Scale(props: { value?: number; onChange?: (value: number) => void; label: string }) {
   const { value = 0, onChange, label } = props;
   return (
-    <span className="dots" title={`${label}: ${value || "not scored"} of 5`}>
+    <span className="scale" title={`${label}: ${value || "not scored"} of 5`}>
       {[1, 2, 3, 4, 5].map((n) => (
         <button key={n} type="button" disabled={!onChange} className={n <= value ? "on" : ""} onClick={() => onChange?.(n)} aria-label={`${label} ${n}`} />
       ))}
@@ -55,14 +55,18 @@ export function Dots(props: { value?: number; onChange?: (value: number) => void
   );
 }
 
-export function SteepleTag(props: { value: string; onChange?: (value: string) => void }) {
+/** A STEEPLE category: a square of its colour and its name; a menu when `onChange` is given. */
+export function Category(props: { value: string; onChange?: (value: string) => void }) {
   const { value, onChange } = props;
-  const style = { color: STEEPLE[value] ?? "#555", borderColor: STEEPLE[value] ?? "#555" };
-  if (!onChange) return <span className="tag" style={style}>{value}</span>;
+  const square = <i className="sq" style={{ background: STEEPLE[value] ?? "#777" }} />;
+  if (!onChange) return <span className="cat">{square}{value}</span>;
   return (
-    <select className="tag" style={style} value={value} onChange={(e) => onChange(e.target.value)} title="Change the category">
-      {Object.keys(STEEPLE).map((s) => <option key={s}>{s}</option>)}
-    </select>
+    <label className="cat" title="Change the category">
+      {square}
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label="Category">
+        {Object.keys(STEEPLE).map((s) => <option key={s}>{s}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -97,27 +101,25 @@ export function Linked({ text }: { text: string }) {
   );
 }
 
-/** A 2x2 scenario matrix: X poles as columns, Y poles as rows; `cell` draws each quadrant. */
-export function Matrix({ set, cell }: { set: AxisSet; cell: (xPole: string, yPole: string) => ReactNode }) {
+/** A 2x2 scenario matrix: X poles across, Y poles down, the two axes crossing in the middle.
+ *  `cell` draws each quadrant. */
+export function Matrix({ set, cell, compact }: { set: AxisSet; cell: (xPole: string, yPole: string) => ReactNode; compact?: boolean }) {
   const xs = [set.x.pole_a, set.x.pole_b];
   const ys = [set.y.pole_a, set.y.pole_b];
   return (
-    <div className="matrix">
-      <div className="matrix-x">
-        <span className="axis-label">{set.x.driver ?? set.x.driver_id}</span>
-        <div className="matrix-poles">{xs.map((x) => <div key={x} className="pole">{x}</div>)}</div>
-      </div>
-      <div className="matrix-body">
-        <span className="axis-label vertical">{set.y.driver ?? set.y.driver_id}</span>
-        <div className="matrix-rows">
-          {ys.map((y) => (
-            <div className="matrix-row" key={y}>
-              <div className="pole">{y}</div>
-              {xs.map((x) => <div className="matrix-cell" key={x}>{cell(x, y)}</div>)}
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className={`matrix ${compact ? "compact" : ""}`}>
+      <p className="mx-key">
+        <span><b>Across</b> {set.x.driver ?? set.x.driver_id}</span>
+        <span><b>Down</b> {set.y.driver ?? set.y.driver_id}</span>
+      </p>
+      <span />
+      {xs.map((x) => <div key={x} className="mx-pole across">{x}</div>)}
+      {ys.map((y, r) => (
+        <Fragment key={y}>
+          <div className="mx-pole down">{y}</div>
+          {xs.map((x, c) => <div className={`mx-cell r${r} c${c}`} key={x}>{cell(x, y)}</div>)}
+        </Fragment>
+      ))}
     </div>
   );
 }

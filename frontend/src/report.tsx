@@ -21,19 +21,20 @@ export function Report({ runId }: { runId: string }) {
       <div className="downloads">
         <a className="button primary" href={`/api/runs/${runId}/export.md`}>Download the report (Markdown)</a>
         <a className="button" href={`/api/runs/${runId}/export.json`}>Download all data (JSON)</a>
-        <span className="muted">The report holds the scenarios, the material behind them and this process record.</span>
+        <span className="hint">The report holds the scenarios, the material behind them and this process record.</span>
       </div>
 
-      <div className="stats">
-        <div><small>Experiment arm</small><b>{m.arm}</b></div>
-        <div><small>Scenarios</small><b>{t.scenarios}</b></div>
-        <div><small>AI time</small><b>{minutes(t.ai_seconds)}</b></div>
-        <div><small>AI cost</small><b>{money(t.cost)}</b></div>
-        <div><small>Human review time</small><b>{minutes(t.review_seconds)}</b></div>
-        <div><small>Human edits · sent back</small><b>{t.edited} · {t.revised}</b></div>
-      </div>
+      <dl className="figures">
+        <div><dd>{t.scenarios}</dd><dt>Scenarios</dt></div>
+        <div><dd>{minutes(t.ai_seconds)}</dd><dt>AI time</dt></div>
+        <div><dd>{money(t.cost)}</dd><dt>AI cost</dt></div>
+        <div><dd>{minutes(t.review_seconds)}</dd><dt>Human review time</dt></div>
+        <div><dd>{t.edited}</dd><dt>Reviews edited by hand</dt></div>
+        <div><dd>{t.revised}</dd><dt>Reviews sent back to the AI</dt></div>
+      </dl>
+      <p className="hint">Experiment arm: <b>{m.arm}</b></p>
       {!m.complete && (
-        <p className="callout past">
+        <p className="flag">
           Some steps of this run ran before step times and costs were recorded, so the totals are partial. New runs, and steps you run from now on, are recorded in full.
         </p>
       )}
@@ -56,7 +57,7 @@ export function Report({ runId }: { runId: string }) {
                   {r.recorded ? (
                     <><td>{r.ai_runs}</td><td>{r.reused}</td><td>{minutes(r.ai_seconds)}</td><td>{money(r.cost)}</td></>
                   ) : (
-                    <td colSpan={4} className="muted">ran before recording started</td>
+                    <td colSpan={4} className="faint">ran before recording started</td>
                   )}
                   <td>{r.approved}</td><td>{r.edited}</td><td>{r.revised}</td><td>{minutes(r.review_seconds)}</td>
                   <td>{r.kept ? `${r.kept.unchanged} of ${r.kept.before}` : "–"}</td>

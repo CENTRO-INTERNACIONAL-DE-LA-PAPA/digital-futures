@@ -3,7 +3,7 @@
 
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { Axis, AxisSet, Backcast, Cluster, Critical, Driver, Narrative, Quadrant, Score, Signal, Values, ViewProps } from "./types";
-import { Dots, Editable, Linked, Links, Matrix, STEEPLE, SteepleTag, patch } from "./ui";
+import { Category, Editable, Linked, Links, Matrix, STEEPLE, Scale, patch } from "./ui";
 
 // --- 2 · Drivers ----------------------------------------------------------------------------
 
@@ -22,38 +22,37 @@ export function Drivers({ data, onChange }: ViewProps<Driver>) {
 
   return (
     <>
-      <div className="toolbar">
-        <div className="steeple-bar" role="group" aria-label="Filter by category">
+      <div className="filters">
+        <div className="strip" aria-hidden>
           {counts.map(([s, n]) => (
-            <button
-              key={s}
-              className={category === s ? "active" : ""}
-              style={{ flexGrow: Math.max(n, 3), background: STEEPLE[s] }}
-              onClick={() => setCategory(category === s ? null : s)}
-              title={`${n} ${s} drivers: click to filter`}
-            >
-              {s} <b>{n}</b>
-            </button>
+            <i key={s} style={{ flexGrow: n, background: STEEPLE[s], opacity: !category || category === s ? 1 : 0.25 }} />
           ))}
         </div>
-        <input type="search" placeholder="Search drivers…" value={query} onChange={(e) => setQuery(e.target.value)} />
-        {onChange && <button onClick={add}>+ Add a driver</button>}
+        <div className="filter-row" role="group" aria-label="Filter by category">
+          <button className={category ? "" : "on"} onClick={() => setCategory(null)}>All <b>{data.length}</b></button>
+          {counts.map(([s, n]) => (
+            <button key={s} className={category === s ? "on" : ""} onClick={() => setCategory(category === s ? null : s)}>
+              <i className="sq" style={{ background: STEEPLE[s] }} />{s} <b>{n}</b>
+            </button>
+          ))}
+          <span className="spacer" />
+          <input type="search" placeholder="Search drivers" value={query} onChange={(e) => setQuery(e.target.value)} />
+          {onChange && <button className="plain" onClick={add}>Add a driver</button>}
+        </div>
       </div>
-      <p className="hint">
-        Showing {shown.length} of {data.length} drivers{category && <> in <b>{category}</b></>}.
-      </p>
-      <div className="cards">
+      {shown.length < data.length && <p className="hint">Showing {shown.length} of {data.length} drivers.</p>}
+      <div className="ledger">
         {shown.map(([d, i]) => (
-          <article className="card" key={d.id} style={{ borderTopColor: STEEPLE[d.steeple] }}>
-            <header>
-              <SteepleTag value={d.steeple} onChange={onChange && ((steeple) => onChange(patch(data, i, { steeple })))} />
-              <span className="muted">{d.id}</span>
+          <article className="entry" key={d.id}>
+            <header className="entry-meta">
+              <span className="mono">{d.id}</span>
+              <Category value={d.steeple} onChange={onChange && ((steeple) => onChange(patch(data, i, { steeple })))} />
               {onChange && (
                 <button className="icon" title="Delete this driver" onClick={() => onChange(data.filter((_, j) => j !== i))}>×</button>
               )}
             </header>
-            <Editable className="card-title" value={d.name} onChange={onChange && ((name) => onChange(patch(data, i, { name })))} />
-            <Editable className="card-text" value={d.description} placeholder="Describe the driver…" onChange={onChange && ((description) => onChange(patch(data, i, { description })))} />
+            <Editable className="item-title" value={d.name} onChange={onChange && ((name) => onChange(patch(data, i, { name })))} />
+            <Editable className="item-text" value={d.description} placeholder="Describe the driver…" onChange={onChange && ((description) => onChange(patch(data, i, { description })))} />
             <Links sources={d.sources} />
           </article>
         ))}
@@ -76,37 +75,37 @@ export function Clusters({ data, values, onChange }: ViewProps<Cluster>) {
 
   return (
     <>
-      <p className="hint">
-        {data.length} clusters. The dot on each driver shows its category:{" "}
+      <p className="legend">
         {Object.entries(STEEPLE).map(([s, color]) => (
-          <span key={s} className="legend"><i className="dot" style={{ background: color }} />{s}</span>
+          <span key={s} className="cat"><i className="sq" style={{ background: color }} />{s}</span>
         ))}
       </p>
-      <div className="cards wide">
+      <div className="ledger">
         {data.map((c, i) => (
-          <article className="card" key={i}>
-            <header>
-              <span className="count">{c.driver_ids.length}</span>
-              <Editable className="card-title" value={c.name} onChange={onChange && ((name) => onChange(patch(data, i, { name })))} />
+          <article className="entry strong" key={i}>
+            <header className="entry-meta">
+              <span className="mono">{String(i + 1).padStart(2, "0")}</span>
+              <span>{c.driver_ids.length} {c.driver_ids.length === 1 ? "driver" : "drivers"}</span>
             </header>
-            <Editable className="card-text" value={c.rationale} placeholder="How are these drivers connected?" onChange={onChange && ((rationale) => onChange(patch(data, i, { rationale })))} />
-            <div className="chips">
+            <Editable className="item-title" value={c.name} onChange={onChange && ((name) => onChange(patch(data, i, { name })))} />
+            <Editable className="item-text" value={c.rationale} placeholder="How are these drivers connected?" onChange={onChange && ((rationale) => onChange(patch(data, i, { rationale })))} />
+            <ul className="members">
               {c.driver_ids.map((id) => (
-                <span className="chip" key={id} title={drivers[id]?.description}>
-                  <i className="dot" style={{ background: STEEPLE[drivers[id]?.steeple] ?? "#999" }} />
-                  {drivers[id]?.name ?? id}
+                <li key={id} title={drivers[id]?.description}>
+                  <i className="sq" style={{ background: STEEPLE[drivers[id]?.steeple] ?? "#777" }} />
+                  <span>{drivers[id]?.name ?? id}</span>
                   {onChange && (
                     <span className="move" title="Move to another cluster">
-                      ⇄
+                      move
                       <select value={i} onChange={(e) => move(id, i, Number(e.target.value))} aria-label={`Move ${drivers[id]?.name ?? id}`}>
                         {data.map((other, k) => <option key={k} value={k}>{other.name}</option>)}
-                        <option value={-1}>＋ A new cluster</option>
+                        <option value={-1}>A new cluster</option>
                       </select>
                     </span>
                   )}
-                </span>
+                </li>
               ))}
-            </div>
+            </ul>
           </article>
         ))}
       </div>
@@ -121,12 +120,8 @@ function ScoreMap({ data, cell, onPick }: { data: Score[]; cell: string | null; 
   const most = Math.max(1, ...[1, 2, 3, 4, 5].flatMap((i) => [1, 2, 3, 4, 5].map((u) => count(i, u))));
   return (
     <figure className="score-map">
-      <figcaption>
-        <b>Where the drivers sit.</b> Each square counts the drivers with that impact and uncertainty. The top right
-        corner holds the critical uncertainties. Click a square to list its drivers.
-      </figcaption>
       <div className="score-grid">
-        <span className="axis-label vertical">Impact →</span>
+        <span className="axis-name down">Impact</span>
         <div>
           {[5, 4, 3, 2, 1].map((impact) => (
             <div className="score-row" key={impact}>
@@ -149,13 +144,17 @@ function ScoreMap({ data, cell, onPick }: { data: Score[]; cell: string | null; 
               })}
             </div>
           ))}
-          <div className="score-row ticks">
+          <div className="score-row">
             <span className="tick" />
             {[1, 2, 3, 4, 5].map((n) => <span className="tick" key={n}>{n}</span>)}
           </div>
-          <span className="axis-label">Uncertainty →</span>
+          <span className="axis-name">Uncertainty</span>
         </div>
       </div>
+      <figcaption>
+        <b>Where the drivers sit.</b> Each square counts the drivers with that impact and uncertainty; darker means more.
+        The <mark>marked corner</mark> holds the critical uncertainties. Click a square to list its drivers.
+      </figcaption>
     </figure>
   );
 }
@@ -174,7 +173,7 @@ function Scores({ data, values, onChange, policy }: ViewProps<Score> & { policy:
     <>
       <ScoreMap data={data} cell={cell} onPick={setCell} />
       {cell && (
-        <p className="hint">
+        <p className="flag">
           Showing only drivers with impact {cell[0]} and uncertainty {cell[2]}. <button className="link" onClick={() => setCell(null)}>Show all</button>
         </p>
       )}
@@ -189,18 +188,18 @@ function Scores({ data, values, onChange, policy }: ViewProps<Score> & { policy:
               return (
                 <div className="score-line" key={s.driver_id}>
                   <div>
-                    <b>{s.name}</b>
+                    <p className="score-name">{s.name}</p>
                     {policy ? (
-                      <p className="card-text"><Linked text={s.policy_evidence ?? ""} /></p>
+                      <p className="item-text"><Linked text={s.policy_evidence ?? ""} /></p>
                     ) : (
-                      <Editable className="card-text" value={s.evidence} onChange={onChange && ((evidence) => set(i, { evidence }))} />
+                      <Editable className="item-text" value={s.evidence} onChange={onChange && ((evidence) => set(i, { evidence }))} />
                     )}
                   </div>
                   <div className="meters">
-                    <label>Impact <Dots label="Impact" value={s.impact} onChange={onChange && !policy ? (impact) => set(i, { impact }) : undefined} /></label>
-                    <label>Uncertainty <Dots label="Uncertainty" value={s.uncertainty} onChange={onChange && !policy ? (uncertainty) => set(i, { uncertainty }) : undefined} /></label>
+                    <label>Impact <Scale label="Impact" value={s.impact} onChange={onChange && !policy ? (impact) => set(i, { impact }) : undefined} /></label>
+                    <label>Uncertainty <Scale label="Uncertainty" value={s.uncertainty} onChange={onChange && !policy ? (uncertainty) => set(i, { uncertainty }) : undefined} /></label>
                     {policy && (
-                      <label className="strong">Policy attention <Dots label="Policy attention" value={s.policy_attention} onChange={onChange && ((policy_attention) => set(i, { policy_attention }))} /></label>
+                      <label className="strong">Policy attention <Scale label="Policy attention" value={s.policy_attention} onChange={onChange && ((policy_attention) => set(i, { policy_attention }))} /></label>
                     )}
                   </div>
                 </div>
@@ -228,15 +227,15 @@ export function CriticalDrivers({ data, values, onChange }: ViewProps<Critical>)
   };
 
   return (
-    <div className="cards wide">
+    <div className="ledger">
       {data.map((c, i) => (
-        <article className="card" key={c.cluster}>
-          <header>
-            <span className="eyebrow">{c.cluster}</span>
+        <article className="entry strong" key={c.cluster}>
+          <header className="entry-meta">
+            <span>From the cluster <b>{c.cluster}</b></span>
             {onChange && <button className="icon" title="Remove this critical driver" onClick={() => onChange(data.filter((_, j) => j !== i))}>×</button>}
           </header>
           {onChange && (members[c.cluster]?.length ?? 0) > 1 ? (
-            <select className="card-title pick" value={c.driver_id} onChange={(e) => swap(i, e.target.value)} title="Choose another driver of this cluster">
+            <select className="item-title pick" value={c.driver_id} onChange={(e) => swap(i, e.target.value)} title="Choose another driver of this cluster">
               {members[c.cluster].map((id) => (
                 <option key={id} value={id}>
                   {scores[id].name} ({scores[id].impact}×{scores[id].uncertainty})
@@ -244,14 +243,14 @@ export function CriticalDrivers({ data, values, onChange }: ViewProps<Critical>)
               ))}
             </select>
           ) : (
-            <div className="card-title">{c.name}</div>
+            <div className="item-title">{c.name}</div>
           )}
           <div className="meters row">
-            <label>Impact <Dots label="Impact" value={c.impact} /></label>
-            <label>Uncertainty <Dots label="Uncertainty" value={c.uncertainty} /></label>
-            <label>Policy attention <Dots label="Policy attention" value={c.policy_attention} /></label>
+            <label>Impact <Scale label="Impact" value={c.impact} /></label>
+            <label>Uncertainty <Scale label="Uncertainty" value={c.uncertainty} /></label>
+            <label>Policy attention <Scale label="Policy attention" value={c.policy_attention} /></label>
           </div>
-          <Editable className="card-text" value={c.rationale} onChange={onChange && ((rationale) => onChange(patch(data, i, { rationale })))} />
+          <Editable className="item-text" value={c.rationale} onChange={onChange && ((rationale) => onChange(patch(data, i, { rationale })))} />
         </article>
       ))}
     </div>
@@ -260,16 +259,16 @@ export function CriticalDrivers({ data, values, onChange }: ViewProps<Critical>)
 
 // --- 6 · Axes -------------------------------------------------------------------------------
 
-function AxisBar({ label, axis, steeple, onChange }: { label: string; axis: Axis; steeple?: string; onChange?: (axis: Axis) => void }) {
+function AxisLine({ axis, steeple, onChange }: { axis: Axis; steeple?: string; onChange?: (axis: Axis) => void }) {
   return (
     <div className="axis">
       <p className="axis-head">
-        <span className="eyebrow">{label}</span> <b>{axis.driver ?? axis.driver_id}</b> {steeple && <SteepleTag value={steeple} />}
+        <b>{axis.driver ?? axis.driver_id}</b> {steeple && <Category value={steeple} />}
       </p>
-      <div className="axis-bar">
+      <div className="axis-line">
         <Editable className="pole" value={axis.pole_a} onChange={onChange && ((pole_a) => onChange({ ...axis, pole_a }))} />
-        <span className="arrow" aria-hidden>⟷</span>
-        <Editable className="pole" value={axis.pole_b} onChange={onChange && ((pole_b) => onChange({ ...axis, pole_b }))} />
+        <span className="span" aria-hidden />
+        <Editable className="pole end" value={axis.pole_b} onChange={onChange && ((pole_b) => onChange({ ...axis, pole_b }))} />
       </div>
     </div>
   );
@@ -280,16 +279,18 @@ export function Axes({ data, values, onChange }: ViewProps<AxisSet>) {
   return (
     <>
       {data.map((s, i) => (
-        <article className="card set" key={i}>
-          <header>
-            <span className="eyebrow">Matrix {i + 1}</span>
+        <section className="block" key={i}>
+          <header className="block-head">
+            <h2>Matrix {i + 1}</h2>
             {onChange && <button className="icon" title="Drop this matrix" onClick={() => onChange(data.filter((_, j) => j !== i))}>×</button>}
           </header>
-          <AxisBar label="Axis X" axis={s.x} steeple={steeple[s.x.driver_id]} onChange={onChange && ((x) => onChange(patch(data, i, { x })))} />
-          <AxisBar label="Axis Y" axis={s.y} steeple={steeple[s.y.driver_id]} onChange={onChange && ((y) => onChange(patch(data, i, { y })))} />
-          <p className="eyebrow">Why these two together</p>
-          <Editable className="card-text" value={s.rationale ?? ""} onChange={onChange && ((rationale) => onChange(patch(data, i, { rationale })))} />
-        </article>
+          <AxisLine axis={s.x} steeple={steeple[s.x.driver_id]} onChange={onChange && ((x) => onChange(patch(data, i, { x })))} />
+          <AxisLine axis={s.y} steeple={steeple[s.y.driver_id]} onChange={onChange && ((y) => onChange(patch(data, i, { y })))} />
+          <div className="aside-text">
+            <p className="label">Why these two together</p>
+            <Editable className="item-text" value={s.rationale ?? ""} onChange={onChange && ((rationale) => onChange(patch(data, i, { rationale })))} />
+          </div>
+        </section>
       ))}
     </>
   );
@@ -299,21 +300,32 @@ export function Axes({ data, values, onChange }: ViewProps<AxisSet>) {
 
 const STATUSES = ["dominant today", "established in places", "emerging", "weak signals", "no signal found"];
 const EXISTS_TODAY = STATUSES.slice(0, 2);
-const slug = (text: string) => text.replaceAll(" ", "-");
+
+/** How present a pole is today, as four segments: all filled is "dominant today", none is "no signal found". */
+function Presence({ status }: { status: string }) {
+  const at = STATUSES.indexOf(status);
+  const level = at < 0 ? 0 : 4 - at;
+  return (
+    <span className="presence" aria-hidden>
+      {[1, 2, 3, 4].map((n) => <i key={n} className={n <= level ? "on" : ""} />)}
+    </span>
+  );
+}
 
 export function Signals({ data, onChange, sendBack }: ViewProps<Signal>) {
   const sets = [...new Set(data.map((s) => s.axis_set))];
   return (
     <>
-      <p className="hint scale">
-        How far is today from each pole? {STATUSES.map((s) => <span key={s} className={`status ${slug(s)}`}>{s}</span>)}
+      <p className="legend">
+        <span className="label">Present today</span>
+        {STATUSES.map((s) => <span key={s} className="status"><Presence status={s} />{s}</span>)}
       </p>
       {sets.map((name, n) => {
         const rows = data.map((s, i) => [s, i] as const).filter(([s]) => s.axis_set === name);
         const drivers = [...new Set(rows.map(([s]) => s.driver))];
         return (
-          <article className="card set" key={name}>
-            <header><span className="eyebrow">Matrix {n + 1}</span></header>
+          <section className="block" key={name}>
+            <header className="block-head"><h2>Matrix {n + 1}</h2></header>
             {drivers.map((driver) => {
               const poles = rows.filter(([s]) => s.driver === driver);
               const feedback =
@@ -321,10 +333,10 @@ export function Signals({ data, onChange, sendBack }: ViewProps<Signal>) {
                 poles.map(([s]) => `"${s.pole}": ${s.status}`).join("; ") +
                 "). Rewrite its poles as end-states for the horizon year, where at least one is a real break from what dominates today, or use another critical driver for this axis. Keep the other axes as they are.";
               return (
-                <div key={driver}>
+                <div className="axis" key={driver}>
                   <p className="axis-head"><b>{driver}</b></p>
                   {poles.every(([s]) => EXISTS_TODAY.includes(s.status)) && (
-                    <p className="callout past">
+                    <p className="flag">
                       <b>Low stretch.</b> Both poles of this axis already exist today, so its scenarios may describe the present more than an open future.{" "}
                       {sendBack && (
                         <button className="link" onClick={() => sendBack("axes", feedback)}>Ask the AI for bolder poles (back to step 6)</button>
@@ -334,19 +346,22 @@ export function Signals({ data, onChange, sendBack }: ViewProps<Signal>) {
                   <div className="pair">
                     {poles.map(([s, i]) => (
                       <div className="signal" key={s.pole}>
-                        {onChange ? (
-                          <select className={`status ${slug(s.status)}`} value={s.status} onChange={(e) => onChange(patch(data, i, { status: e.target.value }))}>
-                            {[...new Set([...STATUSES, s.status])].map((x) => <option key={x}>{x}</option>)}
-                          </select>
-                        ) : (
-                          <span className={`status ${slug(s.status)}`}>{s.status}</span>
-                        )}
                         <div className="pole">{s.pole}</div>
-                        <Editable className="card-text" value={s.signals} onChange={onChange && ((signals) => onChange(patch(data, i, { signals })))} />
+                        <label className="status">
+                          <Presence status={s.status} />
+                          {onChange ? (
+                            <select value={s.status} onChange={(e) => onChange(patch(data, i, { status: e.target.value }))} aria-label="Present today">
+                              {[...new Set([...STATUSES, s.status])].map((x) => <option key={x}>{x}</option>)}
+                            </select>
+                          ) : (
+                            s.status
+                          )}
+                        </label>
+                        <Editable className="item-text" value={s.signals} onChange={onChange && ((signals) => onChange(patch(data, i, { signals })))} />
                         {s.shift !== undefined && (
                           <>
-                            <span className="eyebrow">What would have to change</span>
-                            <Editable className="card-text" value={s.shift} onChange={onChange && ((shift) => onChange(patch(data, i, { shift })))} />
+                            <p className="label">What would have to change</p>
+                            <Editable className="item-text" value={s.shift} onChange={onChange && ((shift) => onChange(patch(data, i, { shift })))} />
                           </>
                         )}
                         <Links sources={s.sources} />
@@ -356,7 +371,7 @@ export function Signals({ data, onChange, sendBack }: ViewProps<Signal>) {
                 </div>
               );
             })}
-          </article>
+          </section>
         );
       })}
     </>
@@ -382,22 +397,22 @@ export function Quadrants({ data, values, onChange }: ViewProps<Quadrant>) {
   return (
     <>
       {setsOf(values, data).map((set, n) => (
-        <article className="card set" key={set.name}>
-          <header><span className="eyebrow">Matrix {n + 1}</span></header>
+        <section className="block" key={set.name}>
+          <header className="block-head"><h2>Matrix {n + 1}</h2></header>
           <Matrix
             set={set}
             cell={(x, y) => {
               const i = data.findIndex((q) => q.axis_set === set.name && q.x_pole === x && q.y_pole === y);
-              if (i < 0) return <span className="muted">No scenario</span>;
+              if (i < 0) return <span className="hint">No scenario</span>;
               return (
                 <>
-                  <Editable className="card-title" value={data[i].title} onChange={onChange && ((title) => onChange(patch(data, i, { title })))} />
-                  <Editable className="card-text" value={data[i].sketch} onChange={onChange && ((sketch) => onChange(patch(data, i, { sketch })))} />
+                  <Editable className="item-title" value={data[i].title} onChange={onChange && ((title) => onChange(patch(data, i, { title })))} />
+                  <Editable className="item-text" value={data[i].sketch} onChange={onChange && ((sketch) => onChange(patch(data, i, { sketch })))} />
                 </>
               );
             }}
           />
-        </article>
+        </section>
       ))}
     </>
   );
@@ -405,7 +420,7 @@ export function Quadrants({ data, values, onChange }: ViewProps<Quadrant>) {
 
 // --- 8 · Narratives, 9 · Backcasting, and the final scenarios ------------------------------
 
-/** Pick a scenario in its matrix; `detail` draws what the step adds to it. */
+/** Pick a scenario in its matrix (left); `detail` draws what the step adds to it (right). */
 function Explorer({ values, detail }: { values: Values; detail: (set: AxisSet, quadrant: Quadrant) => ReactNode }) {
   const quadrants = values.quadrants ?? [];
   const sets = setsOf(values, quadrants);
@@ -417,38 +432,37 @@ function Explorer({ values, detail }: { values: Values; detail: (set: AxisSet, q
   const quadrant = mine[picked] ?? mine[0];
 
   return (
-    <>
-      {sets.length > 1 && (
-        <div className="tabs">
-          {sets.map((s, n) => (
-            <button key={s.name} className={s.name === set.name ? "active" : ""} onClick={() => { setSetName(s.name); setPicked(0); }}>
-              Matrix {n + 1}
-            </button>
-          ))}
-        </div>
-      )}
-      <div className="explorer">
-        <div>
-          <p className="hint">Pick a scenario in the matrix.</p>
-          <Matrix
-            set={set}
-            cell={(x, y) => {
-              const k = mine.findIndex((q) => q.x_pole === x && q.y_pole === y);
-              if (k < 0) return null;
-              return <button className={`scenario-pick ${k === picked ? "active" : ""}`} onClick={() => setPicked(k)}>{mine[k].title}</button>;
-            }}
-          />
-        </div>
-        {quadrant && (
-          <article className="card scenario">
-            <h2>{quadrant.title}</h2>
-            <p className="poles"><span className="pole">{quadrant.x_pole}</span><span className="pole">{quadrant.y_pole}</span></p>
-            <p className="card-text">{quadrant.sketch}</p>
-            {detail(set, quadrant)}
-          </article>
+    <div className="explorer">
+      <div className="picker">
+        {sets.length > 1 && (
+          <div className="tabs" role="tablist">
+            {sets.map((s, n) => (
+              <button key={s.name} role="tab" aria-selected={s.name === set.name} className={s.name === set.name ? "active" : ""} onClick={() => { setSetName(s.name); setPicked(0); }}>
+                Matrix {n + 1}
+              </button>
+            ))}
+          </div>
         )}
+        <Matrix
+          compact
+          set={set}
+          cell={(x, y) => {
+            const k = mine.findIndex((q) => q.x_pole === x && q.y_pole === y);
+            if (k < 0) return null;
+            return <button className={`scenario-pick ${k === picked ? "active" : ""}`} onClick={() => setPicked(k)}>{mine[k].title}</button>;
+          }}
+        />
+        <p className="hint">Pick a scenario to read it.</p>
       </div>
-    </>
+      {quadrant && (
+        <article className="scenario" key={`${set.name}-${quadrant.title}`}>
+          <h2>{quadrant.title}</h2>
+          <p className="poles">{quadrant.x_pole} <span aria-hidden>×</span> {quadrant.y_pole}</p>
+          <p className="sketch">{quadrant.sketch}</p>
+          {detail(set, quadrant)}
+        </article>
+      )}
+    </div>
   );
 }
 
@@ -459,56 +473,69 @@ const indexOf = (items: { axis_set?: string; title: string }[], set: AxisSet, q:
 function Voices({ narrative, onChange }: { narrative?: Narrative; onChange?: (narrative: Narrative) => void }) {
   if (!narrative) return null;
   return (
-    <div className="voices">
+    <section className="part">
+      <h3>Four people who live in it</h3>
       {Object.entries(narrative.personas).map(([persona, text]) => (
-        <section key={persona}>
-          <p className="eyebrow">{persona}</p>
+        <div className="voice-block" key={persona}>
+          <p className="persona">The {persona}</p>
           <Editable className="voice" value={text} onChange={onChange && ((value) => onChange({ ...narrative, personas: { ...narrative.personas, [persona]: value } }))} />
-        </section>
+        </div>
       ))}
-    </div>
+    </section>
   );
 }
 
 function Pathway({ b, onChange }: { b?: Backcast; onChange?: (b: Backcast) => void }) {
   if (!b) return null;
-  return (
-    <div className="backcast">
-      <p className="eyebrow">Pathway, working back from the horizon year</p>
-      <ol className="timeline">
-        {b.pathway.map((m, i) => (
-          <li key={i}>
-            <b>{m.year}</b>
-            <Editable className="card-text" value={m.what} onChange={onChange && ((what) => onChange({ ...b, pathway: patch(b.pathway, i, { what }) }))} />
-          </li>
-        ))}
-      </ol>
-
-      <p className="eyebrow">Signals of change today ({b.signals.length})</p>
-      {b.signals.map((s, i) => (
-        <div className="evidence" key={i}>
-          <span className="badges">
-            <span className={`status ${s.direction}`}>{s.direction === "towards" ? "↗ towards" : "↘ against"}</span>
-            <span className="tag">{s.kind}</span>
-            <span className="tag">{s.strength}</span>
-          </span>
-          <div>
-            <Editable className="card-text" value={s.what} onChange={onChange && ((what) => onChange({ ...b, signals: patch(b.signals, i, { what }) }))} />
-            <Links sources={[s.source]} />
+  const evidence = (direction: string, title: string) => {
+    const rows = b.signals.map((s, i) => [s, i] as const).filter(([s]) => s.direction === direction);
+    return (
+      <section className="part">
+        <h3>{title} <span className="mono">{rows.length}</span></h3>
+        {rows.map(([s, i]) => (
+          <div className="evidence" key={i}>
+            <p className="ev-meta"><b>{s.kind}</b>{s.strength}</p>
+            <div>
+              <Editable className="item-text" value={s.what} onChange={onChange && ((what) => onChange({ ...b, signals: patch(b.signals, i, { what }) }))} />
+              <Links sources={[s.source]} />
+            </div>
+            {onChange && <button className="icon" title="Remove this signal" onClick={() => onChange({ ...b, signals: b.signals.filter((_, j) => j !== i) })}>×</button>}
           </div>
-          {onChange && <button className="icon" title="Remove this signal" onClick={() => onChange({ ...b, signals: b.signals.filter((_, j) => j !== i) })}>×</button>}
-        </div>
-      ))}
-      {!b.signals.length && <p className="hint">The searches found no usable signal for this scenario.</p>}
+        ))}
+        {!rows.length && <p className="hint">The searches found none.</p>}
+      </section>
+    );
+  };
 
-      <p className="eyebrow">Not found</p>
-      <Editable className="card-text" value={b.gaps} onChange={onChange && ((gaps) => onChange({ ...b, gaps }))} />
-
-      <p className="eyebrow">Indicators to watch (suggested by the AI, not verified)</p>
-      <ul className="indicators">
-        {b.indicators.map((x, i) => <li key={i}><b>{x.name}.</b> {x.meaning}</li>)}
-      </ul>
-    </div>
+  return (
+    <>
+      <section className="part">
+        <h3>The way back to today</h3>
+        <ol className="pathway">
+          {b.pathway.map((m, i) => (
+            <li key={i}>
+              <span className="mono">{m.year}</span>
+              <Editable className="item-text" value={m.what} onChange={onChange && ((what) => onChange({ ...b, pathway: patch(b.pathway, i, { what }) }))} />
+            </li>
+          ))}
+        </ol>
+      </section>
+      {evidence("towards", "Signs today that point towards it")}
+      {evidence("against", "Signs today that point against it")}
+      <section className="part">
+        <h3>What the searches did not find</h3>
+        <Editable className="item-text" value={b.gaps} onChange={onChange && ((gaps) => onChange({ ...b, gaps }))} />
+      </section>
+      <section className="part">
+        <h3>Indicators to watch</h3>
+        <p className="hint">Suggested by the AI, not verified.</p>
+        <dl className="indicators">
+          {b.indicators.map((x, i) => (
+            <div key={i}><dt>{x.name}</dt><dd>{x.meaning}</dd></div>
+          ))}
+        </dl>
+      </section>
+    </>
   );
 }
 

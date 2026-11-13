@@ -3,6 +3,7 @@
 from datetime import date
 
 from digital_futures.metrics import summary
+from digital_futures.nodes.signals import low_stretch
 
 TITLES = {
     "drivers": "2 · Drivers of change",
@@ -14,6 +15,7 @@ TITLES = {
     "signals": "6b · Signals of plausibility",
     "quadrants": "7 · Quadrants",
     "narratives": "8 · Narratives",
+    "backcast": "9 · Backcasting",
 }
 
 
@@ -37,8 +39,23 @@ def duration(seconds: float | None) -> str:
     return f"{seconds:.0f} s" if seconds < 90 else f"{seconds / 60:.1f} min"
 
 
+def backcast(b: dict) -> list[str]:
+    """A scenario's pathway back to today, the evidence found for its first steps, and what to watch."""
+    out = ["**Pathway, working back from the horizon year**", ""]
+    out += [f"- **{m['year']}.** {m['what']}" for m in b["pathway"]] + [""]
+    if b["signals"]:
+        out += ["**Signals of change today**", ""]
+        out += table(
+            ["Kind", "Direction", "Strength", "Signal", "Source"],
+            [[s["kind"], s["direction"], s["strength"], s["what"], links([s["source"]])] for s in b["signals"]],
+        )
+    out += [f"**Not found.** {b['gaps']}", "", "**Indicators to watch** (suggested by the AI, not verified)", ""]
+    return out + [f"- **{i['name']}.** {i['meaning']}" for i in b["indicators"]] + [""]
+
+
 def scenarios(values: dict) -> list[str]:
     voices = {(n.get("axis_set"), n["title"]): n["personas"] for n in values.get("narratives", [])}
+    backcasts = {(b["axis_set"], b["title"]): b for b in values.get("backcasts", [])}
     out = []
     for n, s in enumerate(values.get("axis_sets", []), 1):
         out += [f"## Matrix {n}: {s['name']}", ""]
@@ -48,12 +65,20 @@ def scenarios(values: dict) -> list[str]:
         out += ["", s.get("rationale", ""), ""]
         signals = [g for g in values.get("signals", []) if g["axis_set"] == s["name"]]
         if signals:
-            out += ["### Signals seen today", ""]
-            out += table(["Pole", "Status", "Signals", "Sources"], [[g["pole"], g["status"], g["signals"], links(g["sources"])] for g in signals])
+            out += ["### How far today is from each pole", ""]
+            out += table(
+                ["Pole", "Today", "Signals", "What would have to change", "Sources"],
+                [[g["pole"], g["status"], g["signals"], g.get("shift", ""), links(g["sources"])] for g in signals],
+            )
+            for driver in dict.fromkeys(g["driver"] for g in signals):
+                if low_stretch([g["status"] for g in signals if g["driver"] == driver]):
+                    out += [f"> Low stretch: both poles of the axis “{driver}” already exist today.", ""]
         for q in (q for q in values.get("quadrants", []) if q["axis_set"] == s["name"]):
             out += [f"### {q['title']}", "", f"*{q['x_pole']} · {q['y_pole']}*", "", q["sketch"], ""]
             for persona, text in voices.get((s["name"], q["title"]), {}).items():
                 out += [f"**{persona.capitalize()}.** {text}", ""]
+            if (s["name"], q["title"]) in backcasts:
+                out += backcast(backcasts[(s["name"], q["title"])])
     return out
 
 

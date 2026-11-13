@@ -14,18 +14,19 @@ from digital_futures.config import log
 SOCIAL_MEDIA = ["facebook.com", "youtube.com", "instagram.com", "tiktok.com", "x.com", "twitter.com", "reddit.com"]
 
 
-def web_search() -> TavilySearch:
-    return TavilySearch(max_results=5, exclude_domains=SOCIAL_MEDIA)  # posts and videos are weak sources
+def web_search(topic: str = "general") -> TavilySearch:
+    """`topic="news"` searches recent news and returns publication dates."""
+    return TavilySearch(max_results=5, topic=topic, exclude_domains=SOCIAL_MEDIA)  # posts and videos are weak sources
 
 
-def search_web(query: str) -> list[dict]:
-    """Top web results as {title, url, content}. A failed search does not stop a step: the model is told."""
+def search_web(query: str, topic: str = "general") -> list[dict]:
+    """Top web results as {title, url, content, date}. A failed search does not stop a step: the model is told."""
     try:
-        results = web_search().invoke({"query": query})["results"]
+        results = web_search(topic).invoke({"query": query})["results"]
     except Exception as e:
         log.warning("Web search failed for %r: %r", query, e)
         return [{"title": f"search failed: {type(e).__name__}", "url": "", "content": ""}]
-    return [{"title": r["title"], "url": r["url"], "content": r["content"][:300]} for r in results]
+    return [{"title": r["title"], "url": r["url"], "content": r["content"][:300], "date": (r.get("published_date") or "")[:16]} for r in results]
 
 
 def search_papers(query: str) -> list[dict]:

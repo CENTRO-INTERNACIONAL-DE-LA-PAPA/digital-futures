@@ -19,6 +19,7 @@ axes_node = importlib.import_module("digital_futures.nodes.axes")
 signals_node = importlib.import_module("digital_futures.nodes.signals")
 quadrants_node = importlib.import_module("digital_futures.nodes.quadrants")
 narratives_node = importlib.import_module("digital_futures.nodes.narratives")
+backcast_node = importlib.import_module("digital_futures.nodes.backcast")
 
 
 def fake_drivers(prompt: str) -> list[dict]:
@@ -53,7 +54,17 @@ def fake_ask_all(schema, prompts, report, label, check=None, attempts=3, model=N
             data = {"scores": [{"driver_id": i, "policy_attention": 2, "policy_evidence": "p"} for i in ids]}
         elif schema is signals_node.AxisSignals:
             urls = re.findall(r"\((http[^)\s,]+)\)", prompt)
-            data = {"poles": [{"pole": k, "status": "early signals", "signals": "s", "urls": [*urls, "http://invented"]} for k in "ab"]}
+            data = {"poles": [{"pole": k, "status": "emerging", "signals": "s", "shift": "c", "urls": [*urls, "http://invented"]} for k in "ab"]}
+        elif schema is backcast_node.Plan:
+            data = {
+                "milestones": [{"year": y, "what": f"by {y}"} for y in (2030, 2060, 2045)],
+                "searches": ["first steps news", "first steps policy"],
+                "paper_query": "mechanism",
+                "indicators": [{"name": "Share of X", "meaning": "a rise means towards"}],
+            }
+        elif schema is backcast_node.Evidence:
+            signal = {"kind": "news", "direction": "against", "strength": "weak", "what": "w"}
+            data = {"signals": [{**signal, "url": "http://news"}, {**signal, "url": "http://invented"}], "gaps": "g"}
         elif schema is quadrants_node.Quadrants:
             data = {"quadrants": [{"x": x, "y": y, "title": f"World {x}{y}", "sketch": "s"} for x in "ab" for y in "ab"]}
         elif schema is narratives_node.Voices:
@@ -80,3 +91,6 @@ def offline(monkeypatch):
     monkeypatch.setattr(signals_node, "search_papers", lambda query: [])
     monkeypatch.setattr(quadrants_node, "ask_all", fake_ask_all)
     monkeypatch.setattr(narratives_node, "ask_all", fake_ask_all)
+    monkeypatch.setattr(backcast_node, "ask_all", fake_ask_all)
+    monkeypatch.setattr(backcast_node, "search_web", lambda query, topic="general": [{"title": "News", "url": "http://news", "content": topic, "date": ""}])
+    monkeypatch.setattr(backcast_node, "search_papers", lambda query: [])

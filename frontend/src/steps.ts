@@ -2,7 +2,7 @@
 
 import type { ComponentType } from "react";
 import type { Scope, Values, ViewProps } from "./types";
-import { Axes, Clusters, CriticalDrivers, Drivers, ImpactScores, Narratives, PolicyScores, Quadrants, Signals } from "./views";
+import { Axes, Backcasts, Clusters, CriticalDrivers, Drivers, ImpactScores, Narratives, PolicyScores, Quadrants, Signals } from "./views";
 
 export type Step = {
   name: string; // the step's name in the graph
@@ -44,12 +44,12 @@ export const STEPS: Step[] = [
   {
     name: "axes", key: "axis_sets", n: "6", title: "Axes of uncertainty", takes: "about 20 seconds", View: Axes,
     what: (s) => `Critical drivers are paired into scenario matrices. Each axis has two poles: two different states its driver could be in by ${s.horizon_year}.`,
-    check: "Poles should be neutral (neither is 'the good one'), differ in kind rather than in degree, and say one thing each. Edit a pole, or drop a matrix with ×.",
+    check: "Poles should be neutral (neither is 'the good one'), differ in kind rather than in degree, say one thing each, and stretch beyond today: at least one pole per axis should be a real break from what dominates now. Edit a pole, or drop a matrix with ×.",
   },
   {
     name: "signals", key: "signals", n: "6b", title: "Signals of plausibility", takes: "about 1 minute", View: Signals,
-    what: () => "For every pole, the AI searched the web and the literature for signs that it is already happening or starting: policies, lobbying, conflicts, agreements, treaties, pilots, research.",
-    check: "'No signal found' does not mean implausible: searches cover English and well-reported places better. If a pole looks implausible, go back to step 6 and change it.",
+    what: () => "How far is today from each pole? The AI searched the web and the literature for signs of it: policies, lobbying, conflicts, agreements, treaties, pilots, research. It also says what would have to change for the pole to prevail.",
+    check: "An axis whose two poles both exist today has low stretch: send it back for bolder poles. 'No signal found' does not mean implausible: searches cover English and well-reported places better.",
   },
   {
     name: "quadrants", key: "quadrants", n: "7", title: "Quadrants", takes: "about 15 seconds", View: Quadrants,
@@ -60,5 +60,10 @@ export const STEPS: Step[] = [
     name: "narratives", key: "narratives", n: "8", title: "Narratives", takes: "about 30 seconds", View: Narratives,
     what: () => "Each scenario is told by four people who live in it: a farmer, a community leader, a scientist and a policy maker.",
     check: "These accounts are fiction to make each world concrete, not forecasts. Check that both poles show in each one.",
+  },
+  {
+    name: "backcast", key: "backcasts", n: "9", title: "Backcasting", takes: "about 3 minutes", View: Backcasts,
+    what: (s) => `Each scenario is worked backwards from ${s.horizon_year} to today. The AI then searched news, the web and the literature for evidence that the first steps are, or are not, under way.`,
+    check: "This is supporting evidence for the report. Open the sources of the signals you plan to cite, and note the signals that point against a scenario. The indicators are suggestions, not checked data.",
   },
 ];

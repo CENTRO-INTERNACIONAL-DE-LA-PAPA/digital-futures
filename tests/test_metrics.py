@@ -60,7 +60,9 @@ def test_markdown_report_has_scenarios_material_and_process_record(finished):
     text = to_markdown(finished)
     assert text.startswith("# Scenarios for food, land and water systems in Global South, 2065")
     assert "## Matrix 1:" in text and "### World aa" in text and "**Farmer.** I remember…" in text
-    assert "### Signals seen today" in text and "[News](http://news)" in text
+    assert "### How far today is from each pole" in text and "[News](http://news)" in text
+    assert "**Pathway, working back from the horizon year**" in text and "- **2060.** by 2060" in text
+    assert "| news | against | weak | w | [News](http://news) |" in text and "- **Share of X.**" in text
     assert "## Drivers of change" in text and "## Process record" in text
     assert "Arm: **AI + seed drivers + human review**." in text
     assert "| 3 · Clusters | 2 | 1 | 0 |" in text

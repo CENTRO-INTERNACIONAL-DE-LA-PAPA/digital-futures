@@ -32,7 +32,16 @@ export type Critical = {
 };
 export type Axis = { driver_id: string; driver?: string; pole_a: string; pole_b: string };
 export type AxisSet = { name: string; x: Axis; y: Axis; rationale?: string };
-export type Signal = { axis_set: string; driver: string; pole: string; status: string; signals: string; sources: Source[] };
+export type Signal = { axis_set: string; driver: string; pole: string; status: string; signals: string; shift?: string; sources: Source[] };
+export type Evidence = { kind: string; direction: string; strength: string; what: string; source: Source };
+export type Backcast = {
+  axis_set: string;
+  title: string;
+  pathway: { year: number; what: string }[];
+  signals: Evidence[];
+  indicators: { name: string; meaning: string }[];
+  gaps: string;
+};
 export type Quadrant = { axis_set: string; x_pole: string; y_pole: string; title: string; sketch: string };
 export type Narrative = { axis_set?: string; title: string; personas: Record<string, string> };
 
@@ -46,6 +55,7 @@ export type Values = {
   signals?: Signal[];
   quadrants?: Quadrant[];
   narratives?: Narrative[];
+  backcasts?: Backcast[];
 };
 
 export type Progress = { busy: boolean; working: string | null; elapsed: number; progress: { at: number; message: string }[] };
@@ -88,4 +98,9 @@ export type RunRow = Totals & { id: string; created: string; arm: string; geogra
 
 // Every step view gets the step's records, everything else in the run, and (when the step is
 // waiting for review) a way to change the records.
-export type ViewProps<T> = { data: T[]; values: Values; onChange?: (data: T[]) => void };
+export type ViewProps<T> = {
+  data: T[];
+  values: Values;
+  onChange?: (data: T[]) => void;
+  sendBack?: (step: string, feedback: string) => void; // reopen an earlier step and ask the AI to revise it
+};

@@ -3,7 +3,7 @@ import { api } from "./api";
 import { STEPS, type Step } from "./steps";
 import type { Run, RunMeta, Scope } from "./types";
 import { CompareRuns, Report } from "./report";
-import { Narratives } from "./views";
+import { Scenarios } from "./views";
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -48,7 +48,7 @@ export default function App() {
 
   const act = (request: Promise<unknown>) => guard(request.then(() => load(runId)));
   const scope = { theme: "", geography: "", current_year: 0, horizon_year: 0, ...run?.values.scope } as Scope;
-  const finished = !!run && !run.busy && !run.pending && !run.failed && !!run.values.narratives?.length;
+  const finished = !!run && !run.busy && !run.pending && !run.failed && !!(run.values[STEPS.at(-1)!.key] as unknown[] | undefined)?.length;
   const current = run?.pending?.step ?? run?.failed?.step ?? null;
   const working = STEPS.find((s) => s.name === run?.working) ?? null;
   const shown = view ?? current ?? (finished ? "scenarios" : null);
@@ -125,11 +125,16 @@ export default function App() {
             setDraft={setDraft}
             onDecision={(decision) => act(api.review(run.id, decision))}
             onReopen={() => act(api.reopen(run.id, step.name))}
+            onSendBack={(to, feedback) => {
+              if (confirm("Go back to that step and ask the AI to revise it? The steps after it will run again.")) {
+                act(api.reopen(run.id, to).then(() => api.review(run.id, { action: "revise", feedback })));
+              }
+            }}
           />
         ) : shown === "scenarios" ? (
           <>
             <Header n="★" title="Scenarios" what={`${run.values.quadrants?.length ?? 0} scenarios for ${scope.theme} in ${scope.geography}, ${scope.horizon_year}. AI-generated with human review: validate with domain experts before use.`} />
-            <Narratives data={run.values.narratives ?? []} values={run.values} />
+            <Scenarios values={run.values} />
           </>
         ) : shown === "report" ? (
           <>
@@ -164,8 +169,9 @@ function StepPage(props: {
   setDraft: (data: any[]) => void;
   onDecision: (decision: object) => void;
   onReopen: () => void;
+  onSendBack: (step: string, feedback: string) => void;
 }) {
-  const { step, run, scope, draft, setDraft, onDecision, onReopen } = props;
+  const { step, run, scope, draft, setDraft, onDecision, onReopen, onSendBack } = props;
   const [revising, setRevising] = useState(false);
   const [feedback, setFeedback] = useState("");
   const reviewing = run.pending?.step === step.name;
@@ -184,7 +190,7 @@ function StepPage(props: {
         </p>
       )}
 
-      <step.View data={reviewing ? draft : ((run.values[step.key] as any[]) ?? [])} values={run.values} onChange={reviewing ? setDraft : undefined} />
+      <step.View data={reviewing ? draft : ((run.values[step.key] as any[]) ?? [])} values={run.values} onChange={reviewing ? setDraft : undefined} sendBack={reviewing ? onSendBack : undefined} />
 
       {reviewing && (
         <footer className="actions">

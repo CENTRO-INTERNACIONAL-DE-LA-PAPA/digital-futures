@@ -99,7 +99,7 @@ def compare() -> list[dict]:
                 "geography": scope.get("geography", ""),
                 "drivers": len(values.get("drivers", [])),
                 "clusters": len(values.get("clusters", [])),
-                "finished": bool(values.get("narratives")) and not runs.pending(graph, key),
+                "finished": bool(values.get(STEPS[-1][1])) and not runs.pending(graph, key),
                 **summary(values)["totals"],
             }
         )

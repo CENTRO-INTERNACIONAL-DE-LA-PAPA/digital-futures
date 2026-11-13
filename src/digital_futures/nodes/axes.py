@@ -15,8 +15,13 @@ from digital_futures.state import State
 
 SYSTEM = """You are a foresight analyst building 2x2 scenario matrices from critical drivers of change.
 
-- An axis is one critical driver. Its two poles are two contrasting states that this same
-  driver could plausibly be in by the horizon year.
+- An axis is one critical driver. Its two poles are two contrasting end-states that this same
+  driver could plausibly have reached by the horizon year, each as the prevailing state across
+  the geography in scope.
+- Stretch beyond today. At least one pole of every axis is a real break from the state that
+  dominates today. Do not build an axis from the two sides of a present-day debate that already
+  coexist (for example, an old practice versus a new one that is already spreading): ask what
+  each side would have become decades from now.
 - Poles are neutral: neither is the desirable or the undesirable outcome, and a reader could
   not tell which one the author prefers.
 - Poles differ in kind, not in degree. Never more/less, high/low, strong/weak, fast/slow,
@@ -47,7 +52,10 @@ RUBRIC = """1. Each axis is a single critical driver, and both of its poles are 
    that all four combinations of poles are plausible and distinct.
 6. No driver is used in more than one set.
 7. The sets are not dominated by technology or AI drivers, and the poles do not assume an
-   optimistic future."""
+   optimistic future.
+8. Every axis stretches beyond the present: at least one of its poles is a clear break from the
+   state that dominates today, and no axis merely restates a present-day debate whose two
+   sides already coexist."""
 
 
 class Axis(BaseModel):

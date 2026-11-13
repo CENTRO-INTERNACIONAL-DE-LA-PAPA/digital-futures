@@ -1,8 +1,8 @@
 // One view per step. Each shows the step's records in the form that is easiest to judge,
 // and lets the reviewer change them in place when the step is waiting for review.
 
-import { useState, type CSSProperties } from "react";
-import type { Axis, AxisSet, Cluster, Critical, Driver, Narrative, Quadrant, Score, Signal, Values, ViewProps } from "./types";
+import { useState, type CSSProperties, type ReactNode } from "react";
+import type { Axis, AxisSet, Backcast, Cluster, Critical, Driver, Narrative, Quadrant, Score, Signal, Values, ViewProps } from "./types";
 import { Dots, Editable, Linked, Links, Matrix, STEEPLE, SteepleTag, patch } from "./ui";
 
 // --- 2 · Drivers ----------------------------------------------------------------------------
@@ -297,16 +297,16 @@ export function Axes({ data, values, onChange }: ViewProps<AxisSet>) {
 
 // --- 6b · Signals ---------------------------------------------------------------------------
 
-const STATUSES = ["happening now", "early signals", "no signal found"];
+const STATUSES = ["dominant today", "established in places", "emerging", "weak signals", "no signal found"];
+const EXISTS_TODAY = STATUSES.slice(0, 2);
+const slug = (text: string) => text.replaceAll(" ", "-");
 
-export function Signals({ data, onChange }: ViewProps<Signal>) {
+export function Signals({ data, onChange, sendBack }: ViewProps<Signal>) {
   const sets = [...new Set(data.map((s) => s.axis_set))];
   return (
     <>
-      <p className="hint">
-        <span className="status happening-now">happening now</span> already the reality somewhere in scope ·{" "}
-        <span className="status early-signals">early signals</span> proposals, pilots, lobbying, disputes ·{" "}
-        <span className="status no-signal-found">no signal found</span> the searches found nothing relevant
+      <p className="hint scale">
+        How far is today from each pole? {STATUSES.map((s) => <span key={s} className={`status ${slug(s)}`}>{s}</span>)}
       </p>
       {sets.map((name, n) => {
         const rows = data.map((s, i) => [s, i] as const).filter(([s]) => s.axis_set === name);
@@ -314,27 +314,48 @@ export function Signals({ data, onChange }: ViewProps<Signal>) {
         return (
           <article className="card set" key={name}>
             <header><span className="eyebrow">Matrix {n + 1}</span></header>
-            {drivers.map((driver) => (
-              <div key={driver}>
-                <p className="axis-head"><b>{driver}</b></p>
-                <div className="pair">
-                  {rows.filter(([s]) => s.driver === driver).map(([s, i]) => (
-                    <div className="signal" key={s.pole}>
-                      {onChange ? (
-                        <select className={`status ${s.status.replaceAll(" ", "-")}`} value={s.status} onChange={(e) => onChange(patch(data, i, { status: e.target.value }))}>
-                          {STATUSES.map((x) => <option key={x}>{x}</option>)}
-                        </select>
-                      ) : (
-                        <span className={`status ${s.status.replaceAll(" ", "-")}`}>{s.status}</span>
+            {drivers.map((driver) => {
+              const poles = rows.filter(([s]) => s.driver === driver);
+              const feedback =
+                `The axis "${driver}" has low stretch: both of its poles already exist today (` +
+                poles.map(([s]) => `"${s.pole}": ${s.status}`).join("; ") +
+                "). Rewrite its poles as end-states for the horizon year, where at least one is a real break from what dominates today, or use another critical driver for this axis. Keep the other axes as they are.";
+              return (
+                <div key={driver}>
+                  <p className="axis-head"><b>{driver}</b></p>
+                  {poles.every(([s]) => EXISTS_TODAY.includes(s.status)) && (
+                    <p className="callout past">
+                      <b>Low stretch.</b> Both poles of this axis already exist today, so its scenarios may describe the present more than an open future.{" "}
+                      {sendBack && (
+                        <button className="link" onClick={() => sendBack("axes", feedback)}>Ask the AI for bolder poles (back to step 6)</button>
                       )}
-                      <div className="pole">{s.pole}</div>
-                      <Editable className="card-text" value={s.signals} onChange={onChange && ((signals) => onChange(patch(data, i, { signals })))} />
-                      <Links sources={s.sources} />
-                    </div>
-                  ))}
+                    </p>
+                  )}
+                  <div className="pair">
+                    {poles.map(([s, i]) => (
+                      <div className="signal" key={s.pole}>
+                        {onChange ? (
+                          <select className={`status ${slug(s.status)}`} value={s.status} onChange={(e) => onChange(patch(data, i, { status: e.target.value }))}>
+                            {[...new Set([...STATUSES, s.status])].map((x) => <option key={x}>{x}</option>)}
+                          </select>
+                        ) : (
+                          <span className={`status ${slug(s.status)}`}>{s.status}</span>
+                        )}
+                        <div className="pole">{s.pole}</div>
+                        <Editable className="card-text" value={s.signals} onChange={onChange && ((signals) => onChange(patch(data, i, { signals })))} />
+                        {s.shift !== undefined && (
+                          <>
+                            <span className="eyebrow">What would have to change</span>
+                            <Editable className="card-text" value={s.shift} onChange={onChange && ((shift) => onChange(patch(data, i, { shift })))} />
+                          </>
+                        )}
+                        <Links sources={s.sources} />
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </article>
         );
       })}
@@ -382,20 +403,18 @@ export function Quadrants({ data, values, onChange }: ViewProps<Quadrant>) {
   );
 }
 
-// --- 8 · Narratives, and the final scenarios ------------------------------------------------
+// --- 8 · Narratives, 9 · Backcasting, and the final scenarios ------------------------------
 
-export function Narratives({ data, values, onChange }: ViewProps<Narrative>) {
+/** Pick a scenario in its matrix; `detail` draws what the step adds to it. */
+function Explorer({ values, detail }: { values: Values; detail: (set: AxisSet, quadrant: Quadrant) => ReactNode }) {
   const quadrants = values.quadrants ?? [];
   const sets = setsOf(values, quadrants);
   const [picked, setPicked] = useState(0);
   const [setName, setSetName] = useState(sets[0]?.name);
   const set = sets.find((s) => s.name === setName) ?? sets[0];
   if (!set) return <p className="hint">No scenarios yet.</p>;
-
   const mine = quadrants.filter((q) => q.axis_set === set.name);
   const quadrant = mine[picked] ?? mine[0];
-  const i = data.findIndex((n) => n.title === quadrant?.title && (n.axis_set ?? set.name) === set.name);
-  const narrative = data[i];
 
   return (
     <>
@@ -425,17 +444,109 @@ export function Narratives({ data, values, onChange }: ViewProps<Narrative>) {
             <h2>{quadrant.title}</h2>
             <p className="poles"><span className="pole">{quadrant.x_pole}</span><span className="pole">{quadrant.y_pole}</span></p>
             <p className="card-text">{quadrant.sketch}</p>
-            <div className="voices">
-              {Object.entries(narrative?.personas ?? {}).map(([persona, text]) => (
-                <section key={persona}>
-                  <p className="eyebrow">{persona}</p>
-                  <Editable className="voice" value={text} onChange={onChange && ((value) => onChange(patch(data, i, { personas: { ...narrative.personas, [persona]: value } })))} />
-                </section>
-              ))}
-            </div>
+            {detail(set, quadrant)}
           </article>
         )}
       </div>
     </>
+  );
+}
+
+/** Where a scenario's record sits in a step's list. */
+const indexOf = (items: { axis_set?: string; title: string }[], set: AxisSet, q: Quadrant) =>
+  items.findIndex((n) => n.title === q.title && (n.axis_set ?? set.name) === set.name);
+
+function Voices({ narrative, onChange }: { narrative?: Narrative; onChange?: (narrative: Narrative) => void }) {
+  if (!narrative) return null;
+  return (
+    <div className="voices">
+      {Object.entries(narrative.personas).map(([persona, text]) => (
+        <section key={persona}>
+          <p className="eyebrow">{persona}</p>
+          <Editable className="voice" value={text} onChange={onChange && ((value) => onChange({ ...narrative, personas: { ...narrative.personas, [persona]: value } }))} />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function Pathway({ b, onChange }: { b?: Backcast; onChange?: (b: Backcast) => void }) {
+  if (!b) return null;
+  return (
+    <div className="backcast">
+      <p className="eyebrow">Pathway, working back from the horizon year</p>
+      <ol className="timeline">
+        {b.pathway.map((m, i) => (
+          <li key={i}>
+            <b>{m.year}</b>
+            <Editable className="card-text" value={m.what} onChange={onChange && ((what) => onChange({ ...b, pathway: patch(b.pathway, i, { what }) }))} />
+          </li>
+        ))}
+      </ol>
+
+      <p className="eyebrow">Signals of change today ({b.signals.length})</p>
+      {b.signals.map((s, i) => (
+        <div className="evidence" key={i}>
+          <span className="badges">
+            <span className={`status ${s.direction}`}>{s.direction === "towards" ? "↗ towards" : "↘ against"}</span>
+            <span className="tag">{s.kind}</span>
+            <span className="tag">{s.strength}</span>
+          </span>
+          <div>
+            <Editable className="card-text" value={s.what} onChange={onChange && ((what) => onChange({ ...b, signals: patch(b.signals, i, { what }) }))} />
+            <Links sources={[s.source]} />
+          </div>
+          {onChange && <button className="icon" title="Remove this signal" onClick={() => onChange({ ...b, signals: b.signals.filter((_, j) => j !== i) })}>×</button>}
+        </div>
+      ))}
+      {!b.signals.length && <p className="hint">The searches found no usable signal for this scenario.</p>}
+
+      <p className="eyebrow">Not found</p>
+      <Editable className="card-text" value={b.gaps} onChange={onChange && ((gaps) => onChange({ ...b, gaps }))} />
+
+      <p className="eyebrow">Indicators to watch (suggested by the AI, not verified)</p>
+      <ul className="indicators">
+        {b.indicators.map((x, i) => <li key={i}><b>{x.name}.</b> {x.meaning}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+export function Narratives({ data, values, onChange }: ViewProps<Narrative>) {
+  return (
+    <Explorer
+      values={values}
+      detail={(set, q) => {
+        const i = indexOf(data, set, q);
+        return <Voices narrative={data[i]} onChange={onChange && ((n) => onChange(patch(data, i, n)))} />;
+      }}
+    />
+  );
+}
+
+export function Backcasts({ data, values, onChange }: ViewProps<Backcast>) {
+  return (
+    <Explorer
+      values={values}
+      detail={(set, q) => {
+        const i = indexOf(data, set, q);
+        return <Pathway b={data[i]} onChange={onChange && ((b) => onChange(patch(data, i, b)))} />;
+      }}
+    />
+  );
+}
+
+/** The finished run: every scenario with its four voices and its pathway back to today. */
+export function Scenarios({ values }: { values: Values }) {
+  return (
+    <Explorer
+      values={values}
+      detail={(set, q) => (
+        <>
+          <Voices narrative={(values.narratives ?? [])[indexOf(values.narratives ?? [], set, q)]} />
+          <Pathway b={(values.backcasts ?? [])[indexOf(values.backcasts ?? [], set, q)]} />
+        </>
+      )}
+    />
   );
 }

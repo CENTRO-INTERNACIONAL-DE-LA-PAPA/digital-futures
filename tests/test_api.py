@@ -44,7 +44,7 @@ def test_a_run_goes_from_start_to_review_to_the_next_step(client):
 
 def test_meta_lists_the_steps_in_order(client):
     steps = [s["name"] for s in client.get("/api/meta").json()["steps"]]
-    assert steps[0] == "drivers" and steps[-1] == "narratives" and "signals" in steps
+    assert steps[0] == "drivers" and steps[-1] == "backcast" and "signals" in steps
 
 
 def test_metrics_exports_and_comparison_are_served(client):

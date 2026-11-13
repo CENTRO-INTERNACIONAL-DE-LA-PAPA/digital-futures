@@ -75,8 +75,9 @@ class Signal(TypedDict):
     axis_set: str
     driver: str
     pole: str
-    status: Literal["happening now", "early signals", "no signal found"]
+    status: str  # from "dominant today" to "no signal found": how far today is from the pole
     signals: str
+    shift: NotRequired[str]  # what would have to change for the pole to prevail by the horizon year
     sources: list[Source]
 
 
@@ -92,6 +93,17 @@ class Narrative(TypedDict):
     axis_set: str
     title: str  # the quadrant's title
     personas: dict[str, str]  # persona -> text
+
+
+class Backcast(TypedDict):
+    """A scenario worked backwards to today, with the evidence found for its first steps."""
+
+    axis_set: str
+    title: str  # the quadrant's title
+    pathway: list[dict]  # {"year", "what"}, latest first
+    signals: list[dict]  # {"kind", "direction", "strength", "what", "source": Source}
+    indicators: list[dict]  # {"name", "meaning"}: suggested by the AI, not verified
+    gaps: str
 
 
 class Review(TypedDict):
@@ -128,5 +140,6 @@ class State(TypedDict, total=False):
     signals: list[Signal]
     quadrants: list[Quadrant]
     narratives: list[Narrative]
+    backcasts: list[Backcast]
     reviews: Annotated[list[Review], add]
     step_runs: Annotated[list[StepRun], add]

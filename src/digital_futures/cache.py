@@ -13,10 +13,11 @@ from langgraph.config import get_config, get_store
 from digital_futures.config import settings
 
 
-def digest(step: str, inputs: dict) -> str:
-    """Hash of everything a step's result depends on: its inputs and the models in use."""
+def digest(step: str, inputs: dict, source: str = "") -> str:
+    """Hash of everything a step's result depends on: its inputs, the models in use, and the
+    step's own code (`source`), so that a changed prompt does not return old results."""
     models = [settings.reasoning_model, settings.narrative_model, settings.reasoning_effort]
-    text = json.dumps([step, models, inputs], sort_keys=True, ensure_ascii=False)
+    text = json.dumps([step, models, inputs, source], sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(text.encode()).hexdigest()
 
 

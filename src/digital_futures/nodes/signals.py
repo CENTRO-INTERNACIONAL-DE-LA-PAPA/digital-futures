@@ -1,8 +1,9 @@
-"""Node 6b: signals of plausibility for every pole of every axis.
+"""Node 6b: how far is today from each pole of each axis?
 
-Is a pole already happening somewhere, or are there early signs of it (policies, lobbying,
-conflicts, agreements, treaties, pilots, research)? Each pole gets a web search and each axis
-a paper search; the AI then judges the pole from those results only and cites their links.
+A scenario should stretch beyond the present. For each pole the step searches the web and the
+literature for signs of it today (policies, lobbying, conflicts, agreements, treaties, pilots,
+research), and the AI places the pole on a scale from "dominant today" to "no signal found",
+citing only links from the results. An axis whose two poles both exist today has low stretch.
 """
 
 from concurrent.futures import ThreadPoolExecutor
@@ -15,19 +16,26 @@ from digital_futures.progress import reporter
 from digital_futures.state import State
 from digital_futures.tools import search_papers, search_web
 
-GUIDE = """An axis of uncertainty has two poles: two states its driver could be in by the horizon year.
-From the search results below, judge for each pole whether that state is already visible today.
+Status = Literal["dominant today", "established in places", "emerging", "weak signals", "no signal found"]
+
+GUIDE = """An axis of uncertainty has two poles: two end-states its driver could have reached by the horizon
+year. From the search results below, judge for each pole how far today is from it.
 
 status:
-- "happening now": already the reality in at least some places in scope (laws in force,
-  agreements signed, ongoing conflicts, established practice).
-- "early signals": moves in that direction (proposals, draft laws, lobbying, negotiations,
-  disputes, pilots, research findings).
+- "dominant today": this is already the prevailing state across most of the geography in scope.
+- "established in places": the normal state in some countries or regions, but not the prevailing one.
+- "emerging": not the normal state anywhere yet, but there are concrete moves: pilots, draft
+  laws, signed agreements not yet in force, investments, open disputes, organised lobbying.
+- "weak signals": only isolated cases, proposals, forecasts or research findings.
 - "no signal found": the results show nothing relevant.
+Be strict: one country or one programme does not make a pole "established in places".
 
 signals: 2 or 3 sentences naming who, where and when. Say what kind of signal it is (policy,
 lobby, conflict, agreement, treaty, pilot, research), and note when it comes from outside the
 geography in scope. With "no signal found", say what was searched and found missing.
+
+shift: 1 or 2 sentences on what would have to change for this pole to become the prevailing
+state by the horizon year.
 
 urls: the links that support your judgement, copied exactly from the results. Use nothing
 that is not in the results, and do not fill gaps from memory."""
@@ -35,13 +43,19 @@ that is not in the results, and do not fill gaps from memory."""
 
 class PoleSignal(BaseModel):
     pole: Literal["a", "b"]
-    status: Literal["happening now", "early signals", "no signal found"]
+    status: Status
     signals: str
+    shift: str
     urls: list[str]
 
 
 class AxisSignals(BaseModel):
     poles: list[PoleSignal]
+
+
+def low_stretch(statuses: list[str]) -> bool:
+    """An axis whose poles all exist today describes the present more than an open future."""
+    return bool(statuses) and all(s in ("dominant today", "established in places") for s in statuses)
 
 
 def axes_of(state: State) -> list[tuple[str, dict]]:
@@ -96,6 +110,7 @@ def signals(state: State) -> dict:
                     "pole": axis[f"pole_{p.pole}"],
                     "status": p.status,
                     "signals": p.signals,
+                    "shift": p.shift,
                     "sources": [{"title": titles[u], "url": u} for u in dict.fromkeys(p.urls) if u in titles],
                 }
             )

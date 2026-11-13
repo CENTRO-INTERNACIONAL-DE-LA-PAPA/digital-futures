@@ -1,5 +1,7 @@
 """The scenario graph: scope, then each step followed by a human review."""
 
+import inspect
+import sys
 import time
 from datetime import UTC, datetime
 from functools import wraps
@@ -24,6 +26,7 @@ STEPS = [
     ("signals", "signals", nodes.signals),
     ("quadrants", "quadrants", nodes.quadrants),
     ("narratives", "narratives", nodes.narratives),
+    ("backcast", "backcasts", nodes.backcast),
 ]
 
 
@@ -34,13 +37,14 @@ def make_step(index: int):
     """
     step, key, fn = STEPS[index]
     inputs = ["scope", *dict.fromkeys(k for _, k, _ in STEPS[:index])]  # what earlier steps wrote
+    source = inspect.getsource(sys.modules[fn.__module__])  # the step's prompts and code
 
     @wraps(fn)
     def run(state: State) -> dict:
         if state.get("feedback"):  # a revision: always ask the AI, and replace the saved result
             saved, input_hash = None, state.get("input_hash")
         else:
-            input_hash = cache.digest(step, {k: state.get(k) for k in inputs})
+            input_hash = cache.digest(step, {k: state.get(k) for k in inputs}, source)
             saved = cache.load(input_hash)
         record = {"step": step, "at": datetime.now(UTC).isoformat(), "seconds": 0.0, "reused": saved is not None}
         if saved is not None:

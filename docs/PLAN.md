@@ -14,7 +14,10 @@ into a LangGraph application.
 | Node 4 | AI pre-scores with evidence, humans adjust. Split in two passes (4a impact + uncertainty, then 4b policy attention) |
 | UI | React app (`frontend/`, Vite + TypeScript, no UI library) on a small FastAPI API (`api.py`); one purpose-built view per step. Replaced the Streamlit prototype on 2026-11-13. A terminal runner stays for development |
 | Saved results | Each step's result is saved per run under a hash of its inputs. Going back and continuing without changes reuses it (human edits included) at no AI cost |
-| Signals (6b) | After the axes: one web search per pole and one paper search per axis; the AI labels each pole as happening now, early signals or no signal found, citing only links from the results. Quadrants build on them |
+| Signals (6b) | After the axes: one web search per pole and one paper search per axis. The AI places each pole on a scale of distance from today (dominant today, established in places, emerging, weak signals, no signal found), says what would have to change for it to prevail, and cites only links from the results. An axis whose two poles both exist today is flagged as low stretch and can be sent back to step 6. Quadrants build on the signals |
+| Axes stretch | Poles are end-states for the horizon year; at least one pole per axis must be a real break from what dominates today (prompt rule and rubric criterion 8, added 2026-11-13; to confirm with Marieke) |
+| Backcasting (9) | Last step. Per scenario: a pathway of four milestones back from the horizon year, then news, web and paper searches for the first steps; the AI picks signals of change from the results only, for and against the scenario, plus what was not found and indicators to watch (unverified) |
+| Saved results and prompts | The hash of a step's saved result includes the step's own code, so a changed prompt is not served old results |
 | Search | Tavily for web signals; Asta (`asta literature find`) for papers |
 | Models | Through OpenRouter: Gemini 3.8 Flash (`google/gemini-3.8-flash`) for reasoning, narratives and grading (chosen 2026-11-10); configurable by env var. Claude models also work for the agents but not as the grader |
 | Time frame | 2026 → 2065 |
@@ -52,7 +55,7 @@ These rules become prompts and grading rubrics:
 ```
 scope ─▶ drivers ⇄ review ─▶ clusters ⇄ review ─▶ score_impact ⇄ review ─▶ score_policy ⇄ review
       ─▶ critical ⇄ review ─▶ axes ⇄ review ─▶ signals ⇄ review ─▶ quadrants ⇄ review
-      ─▶ narratives ⇄ review ─▶ END
+      ─▶ narratives ⇄ review ─▶ backcast ⇄ review ─▶ END
 ```
 
 Each `review` node calls `interrupt()` with the step output. The human resumes with one of:
@@ -76,6 +79,7 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | 6 | `axes` | deepagent + `RubricMiddleware` (rules 6 and 7): sets of two axes, each with two neutral poles |
 | 6b | `signals` | Tavily per pole + Asta per axis, then the reasoning model: is each pole already visible today? |
 | 7 | `quadrants` | Reasoning model: four quadrants per axis set (title and short sketch), one question per set |
+| 9 | `backcast` | Reasoning model twice per scenario (pathway and searches; then signals from the results), Tavily web + news, Asta |
 | 8 | `narratives` | Narrative model: one question per quadrant, four first-person accounts of 100–140 words |
 
 ### Node 4 operational definitions (to validate with Marieke)
@@ -100,10 +104,11 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | 6 ✅ | Node 6 deepagent axes + rubric, node 7 | Axes pass rule 6; quadrants for each set |
 | 7 ✅ | Node 8 narratives (Gemini) | Readable narratives per quadrant and persona |
 | 7b ✅ | Saved step results, signals step (6b), React app replacing Streamlit | Going back costs nothing; every step has a readable, editable view |
+| 7c ✅ | Axes that stretch beyond today, signals as distance from today, backcasting step (9) | Few poles are "dominant today"; every scenario has a pathway and cited signals |
 | 8 ✅ | Research support: run log (timings, human edits), export to Markdown, experiment arms | Outputs usable for the working paper metrics |
 
 ## Open questions
 
 - Axis sets: is "one candidate axis per cluster, N sets per run" the right rule, or should the number of sets follow the number of clusters?
-- Signals (6b): most poles come back as "happening now". Decide whether the scale should measure distance from today, and whether axes need a rule that poles stretch beyond the present.
+- Backcasting searches for evidence of each scenario, which invites confirmation bias. The step asks for signals against it too (20 of 71 in the first run); is that enough?
 - The rubric grader runs on the same model as the agent and passes most answers at the first check; consider a stronger grader.

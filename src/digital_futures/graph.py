@@ -5,8 +5,9 @@ from functools import wraps
 
 from langgraph.graph import END, START, StateGraph
 
-from digital_futures import nodes
+from digital_futures import cache, nodes
 from digital_futures.config import log
+from digital_futures.progress import reporter
 from digital_futures.review import make_review, route_after_review
 from digital_futures.state import State
 
@@ -23,17 +24,33 @@ STEPS = [
 ]
 
 
-def logged(step: str, fn):
-    """Log when a step starts, how long it takes, and how many items it returns."""
+def make_step(index: int):
+    """The node for a step: reuse its saved result when its inputs did not change, else run it.
+
+    Logs when the step starts, how long it takes, and how many items it returns.
+    """
+    step, key, fn = STEPS[index]
+    inputs = ["scope", *dict.fromkeys(k for _, k, _ in STEPS[:index])]  # what earlier steps wrote
 
     @wraps(fn)
     def run(state: State) -> dict:
+        if state.get("feedback"):  # a revision: always ask the AI, and replace the saved result
+            saved, input_hash = None, state.get("input_hash")
+        else:
+            input_hash = cache.digest(step, {k: state.get(k) for k in inputs})
+            saved = cache.load(input_hash)
+        if saved is not None:
+            reporter()("Nothing changed before this step: reused its saved result (no AI cost).")
+            log.info("Step %s: reused the saved result", step)
+            return {key: saved, "input_hash": input_hash}
+
         log.info("Step %s: started", step)
         started = time.monotonic()
         update = fn(state)
         sizes = ", ".join(f"{len(v)} {k}" for k, v in update.items() if isinstance(v, list))
         log.info("Step %s: finished in %.0fs (%s)", step, time.monotonic() - started, sizes)
-        return update
+        cache.save(input_hash, update[key])
+        return {**update, "input_hash": input_hash}
 
     return run
 
@@ -46,7 +63,7 @@ def build_graph(checkpointer=None, store=None):
 
     for i, (step, key, fn) in enumerate(STEPS):
         next_node = STEPS[i + 1][0] if i + 1 < len(STEPS) else END
-        g.add_node(step, logged(step, fn))
+        g.add_node(step, make_step(i))
         g.add_node(f"review_{step}", make_review(step, key))
         g.add_edge(step, f"review_{step}")
         g.add_conditional_edges(f"review_{step}", route_after_review(step, next_node), [step, next_node])

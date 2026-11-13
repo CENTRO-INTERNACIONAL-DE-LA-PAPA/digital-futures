@@ -81,3 +81,33 @@ def test_failed_step_is_reported_and_retry_runs_only_that_step(monkeypatch):
     assert runs.failed(graph, thread_id) is None
     assert runs.pending(graph, thread_id)["step"] == "clusters"
     assert messages == ["fake search"]  # drivers were not searched again
+
+
+def test_going_back_reuses_saved_results_until_something_changes(monkeypatch):
+    import importlib
+
+    clusters_node = importlib.import_module("digital_futures.nodes.clusters")
+    real, calls = clusters_node.research, []
+    monkeypatch.setattr(clusters_node, "research", lambda *args: calls.append(1) or real(*args))
+    store = InMemoryStore()
+    graph = build_graph(InMemorySaver(), store)
+    messages = []
+    thread_id = runs.create(store)
+    runs.start(graph, store, thread_id, messages.append)
+    runs.resume(graph, thread_id, {"action": "approve"}, messages.append)
+    edited = [{**c, "name": "Renamed by hand"} for c in runs.pending(graph, thread_id)["data"]]
+    runs.resume(graph, thread_id, {"action": "edit", "data": edited}, messages.append)
+    assert len(calls) == 1
+
+    runs.reopen(graph, thread_id, "drivers")
+    runs.resume(graph, thread_id, {"action": "approve"}, messages.append)  # nothing changed
+
+    assert len(calls) == 1
+    assert runs.pending(graph, thread_id)["data"] == edited  # the human's version came back
+    assert any("reused its saved result" in m for m in messages)
+
+    runs.reopen(graph, thread_id, "drivers")
+    fewer = runs.pending(graph, thread_id)["data"][:2]
+    runs.resume(graph, thread_id, {"action": "edit", "data": fewer}, messages.append)  # drivers changed
+
+    assert len(calls) == 2

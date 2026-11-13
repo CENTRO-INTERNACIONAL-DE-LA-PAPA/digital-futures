@@ -94,6 +94,7 @@ class State(TypedDict, total=False):
     scope: Scope
     hitl: bool  # False: reviews auto-approve (Solo AI arm)
     feedback: str | None  # pending revision request for the step being redone
+    input_hash: str  # hash of the inputs of the step that ran last; key of its saved result
     drivers: list[Driver]
     clusters: list[Cluster]
     scores: list[Score]

@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 
 from langgraph.types import interrupt
 
+from digital_futures import cache
 from digital_futures.state import State
 
 ACTIONS = {"approve", "edit", "revise"}
@@ -44,6 +45,7 @@ def make_review(step: str, key: str):
         }
         if action == "edit":
             update[key] = decision["data"]
+            cache.save(state.get("input_hash"), decision["data"])  # going back keeps the human's version
         return update
 
     review.__name__ = f"review_{step}"

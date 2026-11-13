@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import { STEPS, type Step } from "./steps";
 import type { Run, RunMeta, Scope } from "./types";
+import { CompareRuns, Report } from "./report";
 import { Narratives } from "./views";
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -65,7 +66,7 @@ export default function App() {
           <option value="">＋ New run</option>
           {runs.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.created.slice(0, 16).replace("T", " ")} · {r.scope.geography ?? "Global South"}
+              {r.created.slice(0, 16).replace("T", " ")} · {r.scope.geography ?? "Global South"} · {r.arm}
             </option>
           ))}
         </select>
@@ -91,6 +92,10 @@ export default function App() {
             <button className={`${finished ? "done" : "todo"} ${shown === "scenarios" ? "shown" : ""}`} disabled={!finished} onClick={() => setView("scenarios")}>
               <span className="bullet">★</span>
               <span>Scenarios</span>
+            </button>
+            <button className={`done ${shown === "report" ? "shown" : ""}`} disabled={run.busy} onClick={() => setView("report")}>
+              <span className="bullet">↓</span>
+              <span>Report and metrics</span>
             </button>
           </nav>
         )}
@@ -126,6 +131,11 @@ export default function App() {
             <Header n="★" title="Scenarios" what={`${run.values.quadrants?.length ?? 0} scenarios for ${scope.theme} in ${scope.geography}, ${scope.horizon_year}. AI-generated with human review: validate with domain experts before use.`} />
             <Narratives data={run.values.narratives ?? []} values={run.values} />
           </>
+        ) : shown === "report" ? (
+          <>
+            <Header n="↓" title="Report and metrics" what="Download what this run produced, and see what it took: time, AI cost, and how much you changed." />
+            <Report runId={run.id} />
+          </>
         ) : (
           <p className="hint">This run has not produced anything yet.</p>
         )}
@@ -139,7 +149,7 @@ export default function App() {
 function Header({ n, title, what }: { n: string; title: string; what: string }) {
   return (
     <header className="page-head">
-      <p className="eyebrow">{n === "★" ? "Result" : `Step ${n}`}</p>
+      <p className="eyebrow">{n === "★" || n === "↓" ? "Result" : `Step ${n}`}</p>
       <h1>{title}</h1>
       <p className="lede">{what}</p>
     </header>
@@ -282,6 +292,7 @@ function NewRun({ onCreated, onError }: { onCreated: (id: string) => void; onErr
         </label>
         <button className="primary">Start the scan (about 8 minutes)</button>
       </form>
+      <CompareRuns onOpen={onCreated} />
     </>
   );
 }

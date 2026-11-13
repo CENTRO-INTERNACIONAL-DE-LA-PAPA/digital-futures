@@ -45,3 +45,14 @@ def test_a_run_goes_from_start_to_review_to_the_next_step(client):
 def test_meta_lists_the_steps_in_order(client):
     steps = [s["name"] for s in client.get("/api/meta").json()["steps"]]
     assert steps[0] == "drivers" and steps[-1] == "narratives" and "signals" in steps
+
+
+def test_metrics_exports_and_comparison_are_served(client):
+    run_id = client.post("/api/runs", json={"scope": {}, "hitl": False}).json()["id"]
+    settled(client, run_id)
+    assert client.get(f"/api/runs/{run_id}/metrics").json()["arm"] == "AI alone"
+    report = client.get(f"/api/runs/{run_id}/export.md")
+    assert report.text.startswith("# Scenarios for") and "attachment" in report.headers["content-disposition"]
+    assert "narratives" in client.get(f"/api/runs/{run_id}/export.json").json()
+    [row] = client.get("/api/compare").json()
+    assert row["finished"] and row["scenarios"] == 4 and row["arm"] == "AI alone"

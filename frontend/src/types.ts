@@ -56,7 +56,35 @@ export type Run = Progress & {
   failed: { step: string; error: string } | null;
   done: string[];
 };
-export type RunMeta = { id: string; created: string; scope: Partial<Scope> };
+export type RunMeta = { id: string; created: string; scope: Partial<Scope>; arm: string };
+
+export type Totals = {
+  elapsed_seconds: number | null;
+  ai_seconds: number;
+  review_seconds: number | null;
+  ai_calls: number;
+  cost: number;
+  edited: number;
+  revised: number;
+  scenarios: number;
+};
+export type StepMetrics = {
+  step: string;
+  items: number | null;
+  recorded: boolean;
+  ai_runs: number;
+  reused: number;
+  ai_seconds: number;
+  ai_calls: number;
+  cost: number;
+  approved: number;
+  edited: number;
+  revised: number;
+  review_seconds: number | null;
+  kept: { before: number; after: number; unchanged: number } | null;
+};
+export type Metrics = { arm: string; complete: boolean; steps: StepMetrics[]; totals: Totals };
+export type RunRow = Totals & { id: string; created: string; arm: string; geography: string; drivers: number; clusters: number; finished: boolean };
 
 // Every step view gets the step's records, everything else in the run, and (when the step is
 // waiting for review) a way to change the records.

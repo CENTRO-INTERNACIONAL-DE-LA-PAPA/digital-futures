@@ -100,9 +100,10 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | 6 ✅ | Node 6 deepagent axes + rubric, node 7 | Axes pass rule 6; quadrants for each set |
 | 7 ✅ | Node 8 narratives (Gemini) | Readable narratives per quadrant and persona |
 | 7b ✅ | Saved step results, signals step (6b), React app replacing Streamlit | Going back costs nothing; every step has a readable, editable view |
-| 8 | Research support: run log (timings, human edits), export to Markdown, experiment arms | Outputs usable for the working paper metrics |
+| 8 ✅ | Research support: run log (timings, human edits), export to Markdown, experiment arms | Outputs usable for the working paper metrics |
 
 ## Open questions
 
 - Axis sets: is "one candidate axis per cluster, N sets per run" the right rule, or should the number of sets follow the number of clusters?
+- Signals (6b): most poles come back as "happening now". Decide whether the scale should measure distance from today, and whether axes need a rule that poles stretch beyond the present.
 - The rubric grader runs on the same model as the agent and passes most answers at the first check; consider a stronger grader.

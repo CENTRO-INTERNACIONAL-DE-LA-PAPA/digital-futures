@@ -9,6 +9,8 @@ A review node pauses the graph with `interrupt()` and expects one of:
 "revise" sends the graph back to the step, which reads `state["feedback"]`.
 """
 
+import json
+from collections import Counter
 from datetime import UTC, datetime
 
 from langgraph.types import interrupt
@@ -17,6 +19,12 @@ from digital_futures import cache
 from digital_futures.state import State
 
 ACTIONS = {"approve", "edit", "revise"}
+
+
+def edits(before: list, after: list) -> dict:
+    """Size of a human edit: items before and after, and how many were left exactly as they were."""
+    old, new = (Counter(json.dumps(i, sort_keys=True) for i in items) for items in (before, after))
+    return {"before": len(before), "after": len(after), "unchanged": sum((old & new).values())}
 
 
 def make_review(step: str, key: str):
@@ -45,6 +53,7 @@ def make_review(step: str, key: str):
         }
         if action == "edit":
             update[key] = decision["data"]
+            update["reviews"][0]["edits"] = edits(state[key], decision["data"])
             cache.save(state.get("input_hash"), decision["data"])  # going back keeps the human's version
         return update
 

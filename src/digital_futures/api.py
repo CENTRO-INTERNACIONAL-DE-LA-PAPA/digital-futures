@@ -14,12 +14,15 @@ from threading import Thread
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from digital_futures import runs
 from digital_futures.config import settings
+from digital_futures.export import to_markdown
 from digital_futures.graph import STEPS, build_graph
+from digital_futures.metrics import arm, summary
 from digital_futures.nodes.scope import DEFAULT_SCOPE
 from digital_futures.persistence import connect
 
@@ -77,7 +80,30 @@ def meta() -> dict:
 @app.get("/api/runs")
 def list_runs() -> list[dict]:
     _, store = backend()
-    return [{"id": key, **value} for key, value in runs.listing(store)]
+    return [{"id": key, **value, "arm": arm(value["scope"], value["hitl"])} for key, value in runs.listing(store)]
+
+
+@app.get("/api/compare")
+def compare() -> list[dict]:
+    """One row per run, to compare experiment arms: how far it got and what it took."""
+    graph, store = backend()
+    rows = []
+    for key, value in runs.listing(store):
+        values = runs.state(graph, key)
+        scope = values.get("scope", value["scope"])
+        rows.append(
+            {
+                "id": key,
+                "created": value["created"],
+                "arm": arm(scope, value["hitl"]),
+                "geography": scope.get("geography", ""),
+                "drivers": len(values.get("drivers", [])),
+                "clusters": len(values.get("clusters", [])),
+                "finished": bool(values.get("narratives")) and not runs.pending(graph, key),
+                **summary(values)["totals"],
+            }
+        )
+    return rows
 
 
 @app.post("/api/runs")
@@ -103,6 +129,25 @@ def get_run(thread_id: str) -> dict:
         "done": [r["step"] for r in values.get("reviews", []) if r["action"] != "revise"],
         **status,
     }
+
+
+@app.get("/api/runs/{thread_id}/metrics")
+def metrics(thread_id: str) -> dict:
+    return summary(runs.state(backend()[0], thread_id))
+
+
+@app.get("/api/runs/{thread_id}/export.md")
+def export_markdown(thread_id: str) -> PlainTextResponse:
+    text = to_markdown(runs.state(backend()[0], thread_id))
+    name = f"digital-futures-{thread_id[:8]}.md"
+    return PlainTextResponse(text, media_type="text/markdown", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@app.get("/api/runs/{thread_id}/export.json")
+def export_json(thread_id: str) -> JSONResponse:
+    """Everything the run holds, as saved: results of every step, reviews and step records."""
+    name = f"digital-futures-{thread_id[:8]}.json"
+    return JSONResponse(runs.state(backend()[0], thread_id), headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @app.get("/api/runs/{thread_id}/progress")

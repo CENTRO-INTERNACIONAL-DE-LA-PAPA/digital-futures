@@ -99,6 +99,20 @@ class Review(TypedDict):
     action: Literal["approve", "edit", "revise"]
     feedback: str
     at: str  # ISO timestamp, for time-to-scenario metrics
+    edits: NotRequired[dict]  # on "edit": items before, after, and left unchanged by the human
+
+
+class StepRun(TypedDict):
+    """One execution of a generating step, for the run metrics."""
+
+    step: str
+    at: str  # ISO timestamp of the start
+    seconds: float
+    reused: bool  # the saved result was reused: no AI call
+    ai_calls: int
+    cost: float  # USD, as reported by the provider
+    tokens_in: int
+    tokens_out: int
 
 
 class State(TypedDict, total=False):
@@ -115,3 +129,4 @@ class State(TypedDict, total=False):
     quadrants: list[Quadrant]
     narratives: list[Narrative]
     reviews: Annotated[list[Review], add]
+    step_runs: Annotated[list[StepRun], add]

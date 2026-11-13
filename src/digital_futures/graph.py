@@ -1,12 +1,14 @@
 """The scenario graph: scope, then each step followed by a human review."""
 
 import time
+from datetime import UTC, datetime
 from functools import wraps
 
 from langgraph.graph import END, START, StateGraph
 
 from digital_futures import cache, nodes
 from digital_futures.config import log
+from digital_futures.llm import tally
 from digital_futures.progress import reporter
 from digital_futures.review import make_review, route_after_review
 from digital_futures.state import State
@@ -40,18 +42,22 @@ def make_step(index: int):
         else:
             input_hash = cache.digest(step, {k: state.get(k) for k in inputs})
             saved = cache.load(input_hash)
+        record = {"step": step, "at": datetime.now(UTC).isoformat(), "seconds": 0.0, "reused": saved is not None}
         if saved is not None:
             reporter()("Nothing changed before this step: reused its saved result (no AI cost).")
             log.info("Step %s: reused the saved result", step)
-            return {key: saved, "input_hash": input_hash}
+            unused = {"ai_calls": 0, "cost": 0.0, "tokens_in": 0, "tokens_out": 0}
+            return {key: saved, "input_hash": input_hash, "step_runs": [{**record, **unused}]}
 
         log.info("Step %s: started", step)
         started = time.monotonic()
-        update = fn(state)
+        with tally() as counts:
+            update = fn(state)
+        record["seconds"] = round(time.monotonic() - started, 1)
         sizes = ", ".join(f"{len(v)} {k}" for k, v in update.items() if isinstance(v, list))
-        log.info("Step %s: finished in %.0fs (%s)", step, time.monotonic() - started, sizes)
+        log.info("Step %s: finished in %.0fs (%s), %d AI calls, $%.4f", step, record["seconds"], sizes, counts["ai_calls"], counts["cost"])
         cache.save(input_hash, update[key])
-        return {**update, "input_hash": input_hash}
+        return {**update, "input_hash": input_hash, "step_runs": [{**record, **counts}]}
 
     return run
 

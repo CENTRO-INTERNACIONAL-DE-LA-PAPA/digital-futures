@@ -2,6 +2,9 @@
 questions, and agents graded against a rubric."""
 
 import time
+from contextlib import contextmanager
+from contextvars import ContextVar
+from threading import Lock
 
 from deepagents import create_deep_agent
 from deepagents.middleware.rubric import RubricMiddleware
@@ -14,6 +17,21 @@ from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from digital_futures.config import log, settings
 
 MAX_GRADER_CHARS = 3_800  # the rubric grader truncates each transcript message at 4,000 characters
+
+
+_tally: ContextVar[dict | None] = ContextVar("tally", default=None)
+_tally_lock = Lock()
+
+
+@contextmanager
+def tally():
+    """Count the AI calls made inside the block: number of calls, cost in USD and tokens."""
+    counts = {"ai_calls": 0, "cost": 0.0, "tokens_in": 0, "tokens_out": 0}
+    token = _tally.set(counts)
+    try:
+        yield counts
+    finally:
+        _tally.reset(token)
 
 
 class CallLog(BaseCallbackHandler):
@@ -29,6 +47,12 @@ class CallLog(BaseCallbackHandler):
         seconds = time.monotonic() - self.started.pop(run_id, time.monotonic())
         message = response.generations[0][0].message
         usage, meta = message.usage_metadata or {}, message.response_metadata
+        if (counts := _tally.get()) is not None:
+            with _tally_lock:  # parallel questions finish on different threads
+                counts["ai_calls"] += 1
+                counts["cost"] += meta.get("cost") or 0
+                counts["tokens_in"] += usage.get("input_tokens") or 0
+                counts["tokens_out"] += usage.get("output_tokens") or 0
         log.info(
             "AI call %s | %.0fs | in %s, out %s (reasoning %s) tokens | finish=%s | $%.4f | %d chars, %d tool calls",
             meta.get("model_name"),

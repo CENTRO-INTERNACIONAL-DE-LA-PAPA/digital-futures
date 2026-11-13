@@ -190,6 +190,23 @@ textarea.editable.pole { margin: 0; padding: 0.45rem 0.7rem; background: var(--a
 .drawer header { display: flex; align-items: center; }
 .drawer pre { flex: 1; overflow: auto; margin: 0; font-size: 0.76rem; background: #1c2321; color: #d6ddd9; padding: 0.9rem; border-radius: var(--radius); white-space: pre-wrap; word-break: break-word; }
 
+/* --- report ---------------------------------------------------------------------------- */
+a.button { display: inline-block; text-decoration: none; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 8px; padding: 0.45rem 0.9rem; }
+a.button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.downloads { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: center; margin: 1.2rem 0; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.7rem; margin-bottom: 1.2rem; }
+.stats > div { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 0.7rem 0.9rem; }
+.stats small { display: block; color: var(--muted); font-size: 0.78rem; }
+.stats b { font-size: 1.15rem; }
+.table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+th, td { padding: 0.5rem 0.7rem; text-align: right; border-top: 1px solid var(--line); white-space: nowrap; }
+thead th { border-top: 0; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+th:first-child { text-align: left; }
+tbody th { font-weight: 600; }
+.compare { margin-top: 2.5rem; }
+.compare td { text-align: left; }
+
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; }
   .rail { position: static; height: auto; }

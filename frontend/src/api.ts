@@ -1,4 +1,4 @@
-import type { Progress, Run, RunMeta, Scope } from "./types";
+import type { Metrics, Progress, Run, RunMeta, RunRow, Scope } from "./types";
 
 async function call<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, body === undefined ? undefined : {
@@ -22,5 +22,7 @@ export const api = {
   review: (id: string, decision: object) => call(`/runs/${id}/review`, decision),
   retry: (id: string) => call(`/runs/${id}/retry`, {}),
   reopen: (id: string, step: string) => call(`/runs/${id}/reopen`, { step }),
+  metrics: (id: string) => call<Metrics>(`/runs/${id}/metrics`),
+  compare: () => call<RunRow[]>("/compare"),
   activity: () => call<{ lines: string[]; spent: number }>("/activity"),
 };

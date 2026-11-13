@@ -40,7 +40,7 @@ def test_revise_reruns_step_with_feedback():
 
 
 def test_edit_replaces_output():
-    edited = [{"id": "x", "name": "Only me", "description": "", "steeple": "legal", "sources": []}]
+    edited = [{"id": i, "name": f"Only {i}", "description": "", "steeple": "legal", "sources": []} for i in ("x", "y")]
     result, _ = run({"drivers": [{"action": "edit", "data": edited}]})
     assert result["drivers"] == edited
     assert result["clusters"][0]["driver_ids"] == ["x"]

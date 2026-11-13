@@ -5,7 +5,7 @@ attention, then higher impact). The AI explains each pick, and changes one only 
 reviewer's feedback asks for it.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from digital_futures.llm import ask_all
 from digital_futures.nodes.scoring import groups
@@ -16,7 +16,7 @@ GUIDE = """These are clusters of drivers of change with their scores (impact, un
 in policy arenas, each 1-5). In each cluster the driver marked PICK was chosen by rule: highest
 impact × uncertainty, ties broken by lower policy attention.
 
-For every cluster, return the pick and 1-2 sentences on why it is a critical uncertainty for the
+For every cluster, return its key (C1, C2, …), the pick and 1-2 sentences on why it is a critical uncertainty for the
 scope: what is at stake and why its future is open. Keep each pick unless the reviewer feedback
 asks to change it; then you may choose another driver from the same cluster."""
 
@@ -25,6 +25,12 @@ class Pick(BaseModel):
     cluster: str
     driver_id: str
     rationale: str
+
+    @field_validator("cluster")
+    @classmethod
+    def key_only(cls, value: str) -> str:
+        """The model sometimes answers "C1 · Cluster name"; keep the key."""
+        return value.split()[0] if value.strip() else value
 
 
 class Picks(BaseModel):

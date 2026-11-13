@@ -18,6 +18,7 @@ class Scope(TypedDict):
     horizon_year: int
     seed_drivers: list[str]  # drivers humans bring in before the run (e.g. from a workshop)
     target_drivers: int
+    axis_sets: int  # how many 2x2 matrices the AI proposes; each one gives four scenarios
 
 
 class Driver(TypedDict):
@@ -56,6 +57,7 @@ class Critical(TypedDict):
 
 class Axis(TypedDict):
     driver_id: str
+    driver: str  # the driver's name
     pole_a: str
     pole_b: str
 
@@ -64,6 +66,7 @@ class AxisSet(TypedDict):
     name: str
     x: Axis
     y: Axis
+    rationale: str
 
 
 class Quadrant(TypedDict):
@@ -75,8 +78,8 @@ class Quadrant(TypedDict):
 
 
 class Narrative(TypedDict):
-    quadrant: str
-    title: str
+    axis_set: str
+    title: str  # the quadrant's title
     personas: dict[str, str]  # persona -> text
 
 

@@ -16,7 +16,7 @@ into a LangGraph application.
 | Search | Tavily for web signals; Asta (`asta literature find`) for papers |
 | Models | Through OpenRouter: Gemini 3.8 Flash (`google/gemini-3.8-flash`) for reasoning, narratives and grading (chosen 2026-11-10); configurable by env var. Claude models also work for the agents but not as the grader |
 | Time frame | 2026 → 2065 |
-| Axis sets | Their number follows the clusters, not a fixed 3 (exact rule settled in phase 6) |
+| Axis sets | Every cluster gives one candidate axis (its critical driver). The AI pairs candidates into sets; how many sets is a run setting (default 3, chosen 2026-11-13, to confirm with Marieke) |
 | Narratives | For all quadrants |
 | Drivers | Target about 80 per run (editable in the scope form) |
 | Critical drivers | One per cluster: highest impact × uncertainty, ties broken by lower policy attention; the AI explains each pick |
@@ -70,9 +70,9 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | 4a | `score_impact` | Reasoning model: impact and uncertainty 1–5 per driver, with evidence |
 | 4b | `score_policy` | Reasoning model + Tavily: attention in policy arenas 1–5, with evidence |
 | 5 | `critical` | Reasoning model: most uncertain, highest impact, then least discussed |
-| 6 | `axes` | deepagent + `RubricMiddleware` (rule 6) |
-| 7 | `quadrants` | Reasoning model: four quadrants per axis set |
-| 8 | `narratives` | Narrative model: one narrative per quadrant, four personas |
+| 6 | `axes` | deepagent + `RubricMiddleware` (rules 6 and 7): sets of two axes, each with two neutral poles |
+| 7 | `quadrants` | Reasoning model: four quadrants per axis set (title and short sketch), one question per set |
+| 8 | `narratives` | Narrative model: one question per quadrant, four first-person accounts of 100–140 words |
 
 ### Node 4 operational definitions (to validate with Marieke)
 
@@ -93,10 +93,11 @@ With `hitl=False` the review nodes approve automatically, which gives the "Solo 
 | 3 ✅ | Node 2 for real: Tavily + Asta tools | Real drivers with sources |
 | 4 ✅ | Node 3 deepagent clustering + rubric | Clusters pass rule 4 |
 | 5 ✅ | Nodes 4a, 4b, 5 | Scores with evidence; human-adjustable table in the UI |
-| 6 | Node 6 deepagent axes + rubric, node 7 | Axes pass rule 6; quadrants for each set |
-| 7 | Node 8 narratives (Gemini) | Readable narratives per quadrant and persona |
+| 6 ✅ | Node 6 deepagent axes + rubric, node 7 | Axes pass rule 6; quadrants for each set |
+| 7 ✅ | Node 8 narratives (Gemini) | Readable narratives per quadrant and persona |
 | 8 | Research support: run log (timings, human edits), export to Markdown, experiment arms | Outputs usable for the working paper metrics |
 
 ## Open questions
 
-- Exact rule linking clusters to axis sets (one set per pair of clusters holding a critical driver?).
+- Axis sets: is "one candidate axis per cluster, N sets per run" the right rule, or should the number of sets follow the number of clusters?
+- The rubric grader runs on the same model as the agent and passes most answers at the first check; consider a stronger grader.

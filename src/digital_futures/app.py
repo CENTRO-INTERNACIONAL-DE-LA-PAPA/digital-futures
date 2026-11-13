@@ -28,41 +28,51 @@ TITLES = {
 }
 
 
-# Steps whose AI is not connected yet: they return placeholder data.
-PLACEHOLDERS = {"axes", "quadrants", "narratives"}
-
-
 @st.cache_resource
 def backend():
     checkpointer, store = connect()
     return build_graph(checkpointer, store), store
 
 
-# --- tables: nested values are edited as JSON text -------------------------------------------
+# --- tables: nested records become "x.pole_a" columns, lists are edited as JSON text ----------
+
+
+def leaves(row: dict, prefix: str = ""):
+    """Flatten nested dicts: {"x": {"pole_a": 1}} yields ("x.pole_a", 1)."""
+    for k, v in row.items():
+        if isinstance(v, dict):
+            yield from leaves(v, f"{prefix}{k}.")
+        else:
+            yield prefix + k, v
 
 
 def to_table(data: list) -> pd.DataFrame:
     if data and not isinstance(data[0], dict):
         return pd.DataFrame({"value": data})
-    rows = [{k: json.dumps(v, ensure_ascii=False) if isinstance(v, list | dict) else v for k, v in r.items()} for r in data]
-    return pd.DataFrame(rows)
+    return pd.DataFrame(
+        [{k: json.dumps(v, ensure_ascii=False) if isinstance(v, list) else v for k, v in leaves(r)} for r in data]
+    )
 
 
 def from_table(df: pd.DataFrame, like: list) -> list:
     if like and not isinstance(like[0], dict):
         return [v for v in df["value"] if isinstance(v, str) and v]
-    nested = {k for r in like for k, v in r.items() if isinstance(v, list | dict)}
+    lists = {k for r in like for k, v in leaves(r) if isinstance(v, list)}
     out = []
     for record in df.to_dict("records"):
-        row = {}
+        row: dict = {}
         for k, v in record.items():
             if v is None or (isinstance(v, float) and pd.isna(v)):
                 continue
-            if k in nested and isinstance(v, str):
+            if k in lists and isinstance(v, str):
                 v = json.loads(v or "null")
             elif isinstance(v, float) and v.is_integer():
                 v = int(v)
-            row[k] = v
+            *path, last = k.split(".")
+            target = row
+            for part in path:
+                target = target.setdefault(part, {})
+            target[last] = v
         out.append(row)
     return out
 
@@ -99,11 +109,35 @@ def advance(graph, thread_id: str, label: str, action) -> None:
 # --- views -----------------------------------------------------------------------------------
 
 
+def show_axes(axis_sets: list) -> None:
+    for s in axis_sets:
+        st.markdown(
+            f"**{s['name']}**\n"
+            + "".join(f"- {k.upper()} · {s[k].get('driver', s[k]['driver_id'])}: {s[k]['pole_a']} ⟷ {s[k]['pole_b']}\n" for k in "xy")
+            + f"\n{s.get('rationale', '')}"
+        )
+
+
+def show_quadrants(quadrants: list, narratives: list = ()) -> None:
+    """Scenarios grouped by set of axes; with `narratives`, each one also shows its four accounts."""
+    voices = {(n.get("axis_set"), n["title"]): n["personas"] for n in narratives}
+    for axis_set in dict.fromkeys(q["axis_set"] for q in quadrants):
+        st.subheader(axis_set)
+        for q in (q for q in quadrants if q["axis_set"] == axis_set):
+            with st.expander(f"{q['title']} — {q['x_pole']} · {q['y_pole']}", expanded=not narratives):
+                st.write(q["sketch"])
+                for persona, text in voices.get((axis_set, q["title"]), {}).items():
+                    st.markdown(f"**{persona.title()}**\n\n{text}")
+
+
 def show_narratives(narratives: list) -> None:
     for n in narratives:
-        with st.expander(n["title"]):
+        with st.expander(f"{n['title']} ({n.get('axis_set', '')})"):
             for persona, text in n["personas"].items():
                 st.markdown(f"**{persona.title()}**\n\n{text}")
+
+
+VIEWS = {"axes": show_axes, "quadrants": show_quadrants, "narratives": show_narratives}
 
 
 def new_run_form(graph, store) -> None:
@@ -115,6 +149,13 @@ def new_run_form(graph, store) -> None:
         current = c1.number_input("Current year", value=DEFAULT_SCOPE["current_year"], step=1)
         horizon = c2.number_input("Horizon year", value=DEFAULT_SCOPE["horizon_year"], step=1)
         target = st.number_input("Target number of drivers", value=DEFAULT_SCOPE["target_drivers"], min_value=5, step=5)
+        sets = st.number_input(
+            "Sets of axes to propose",
+            value=DEFAULT_SCOPE["axis_sets"],
+            min_value=1,
+            max_value=6,
+            help="Each set is one 2x2 matrix: four scenarios, each told by four people.",
+        )
         seeds = st.text_area("Seed drivers (optional, one per line)", help="Drivers people bring in, e.g. from a workshop.")
         hitl = st.toggle("Human review after each step", value=True)
         if st.form_submit_button("Start", type="primary"):
@@ -125,6 +166,7 @@ def new_run_form(graph, store) -> None:
                 "horizon_year": int(horizon),
                 "seed_drivers": [s.strip() for s in seeds.splitlines() if s.strip()],
                 "target_drivers": int(target),
+                "axis_sets": int(sets),
             }
             thread_id = runs.create(store, scope, hitl)
             st.query_params["run"] = thread_id
@@ -134,10 +176,9 @@ def new_run_form(graph, store) -> None:
 def review_panel(graph, thread_id: str, request: dict, round_: int) -> None:
     step, data = request["step"], request["data"]
     st.header(TITLES[step])
-    if step in PLACEHOLDERS:
-        st.warning("Placeholder step: the AI for this step is not connected yet, so this is dummy data.")
-    if step == "narratives":
-        show_narratives(data)
+    if step in VIEWS:
+        VIEWS[step](data)
+        st.caption("Edit the text in the table below, or delete a row to drop it.")
 
     edited = st.data_editor(to_table(data), num_rows="dynamic", use_container_width=True, key=f"edit-{thread_id}-{round_}")
 
@@ -185,7 +226,7 @@ def run_view(graph, thread_id: str) -> None:
         st.subheader("Progress")
         st.caption("Click a finished step to go back to its review.")
         for step, _, _ in STEPS:
-            label = TITLES[step] + (" (placeholder)" if step in PLACEHOLDERS else "")
+            label = TITLES[step]
             if step in done:
                 if st.button(f"✅ {label}", key=f"reopen-{step}", type="tertiary"):
                     runs.reopen(graph, thread_id, step)
@@ -201,7 +242,7 @@ def run_view(graph, thread_id: str) -> None:
         failed_panel(graph, thread_id, *failure)
     else:
         st.header("Scenarios")
-        show_narratives(values.get("narratives", []))
+        show_quadrants(values.get("quadrants", []), values.get("narratives", []))
 
     activity_log()
     with st.expander("All results so far"):

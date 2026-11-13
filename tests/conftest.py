@@ -15,6 +15,9 @@ drivers_node = importlib.import_module("digital_futures.nodes.drivers")
 clusters_node = importlib.import_module("digital_futures.nodes.clusters")
 scoring_node = importlib.import_module("digital_futures.nodes.scoring")
 critical_node = importlib.import_module("digital_futures.nodes.critical")
+axes_node = importlib.import_module("digital_futures.nodes.axes")
+quadrants_node = importlib.import_module("digital_futures.nodes.quadrants")
+narratives_node = importlib.import_module("digital_futures.nodes.narratives")
 
 
 def fake_drivers(prompt: str) -> list[dict]:
@@ -32,7 +35,13 @@ def fake_clusters(prompt: str, drivers: list[dict]) -> list[dict]:
     return [{"name": f"Cluster {n}", "rationale": prompt[:40], "driver_ids": h} for n, h in enumerate(halves, 1) if h]
 
 
-def fake_ask_all(schema, prompts, report, label, check=None, attempts=3):
+def fake_axes(prompt: str, labels: dict[str, str]) -> list[dict]:
+    x, y = list(labels)[:2]
+    axis = lambda i: {"driver_id": i, "pole_a": f"{i} one way", "pole_b": f"{i} another way"}
+    return [{"x": axis(x), "y": axis(y), "rationale": prompt[:40]}]
+
+
+def fake_ask_all(schema, prompts, report, label, check=None, attempts=3, model=None):
     """Answer like the model would, reading driver ids and PICK marks from the prompts."""
     answers = []
     for prompt in prompts:
@@ -41,6 +50,10 @@ def fake_ask_all(schema, prompts, report, label, check=None, attempts=3):
             data = {"scores": [{"driver_id": i, "impact": 4, "uncertainty": 3, "evidence": "e"} for i in ids]}
         elif schema is scoring_node.PolicyScores:
             data = {"scores": [{"driver_id": i, "policy_attention": 2, "policy_evidence": "p"} for i in ids]}
+        elif schema is quadrants_node.Quadrants:
+            data = {"quadrants": [{"x": x, "y": y, "title": f"World {x}{y}", "sketch": "s"} for x in "ab" for y in "ab"]}
+        elif schema is narratives_node.Voices:
+            data = dict.fromkeys(schema.model_fields, "I remember…")
         else:
             picks = re.findall(r"^(C\d+) · .*?\n- (\w+) · .*? PICK$", prompt, re.M | re.S)
             data = {"picks": [{"cluster": c, "driver_id": d, "rationale": "r"} for c, d in picks]}
@@ -57,3 +70,6 @@ def offline(monkeypatch):
     monkeypatch.setattr(scoring_node, "ask_all", fake_ask_all)
     monkeypatch.setattr(scoring_node, "policy_search", lambda driver, geography: [])
     monkeypatch.setattr(critical_node, "ask_all", fake_ask_all)
+    monkeypatch.setattr(axes_node, "research", fake_axes)
+    monkeypatch.setattr(quadrants_node, "ask_all", fake_ask_all)
+    monkeypatch.setattr(narratives_node, "ask_all", fake_ask_all)

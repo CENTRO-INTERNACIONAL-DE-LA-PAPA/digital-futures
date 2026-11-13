@@ -2,13 +2,9 @@
 
 import json
 
-from deepagents import create_deep_agent
-from deepagents.middleware.rubric import RubricMiddleware
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from pydantic import BaseModel
 
-from digital_futures.config import settings
-from digital_futures.llm import chat_model, with_retries
+from digital_futures.llm import ask_graded
 from digital_futures.progress import reporter
 from digital_futures.state import Driver, State
 
@@ -38,9 +34,6 @@ RUBRIC = """1. Every cluster name is specific to its drivers; no generic label t
 6. The clustering is not fragmented: at most one cluster in ten holds a single driver, and
    there are no more clusters than one per 3 drivers."""
 
-MAX_GRADER_CHARS = 3_800  # the grader truncates each transcript message at 4,000 characters
-
-
 class Cluster(BaseModel):
     name: str
     rationale: str
@@ -52,7 +45,7 @@ class Clusters(BaseModel):
 
 
 def task(state: State) -> str:
-    lines = ["Cluster these drivers of change (id [STEEPLE] name: description):"]
+    lines = [f"Cluster these {len(state['drivers'])} drivers of change by interconnection (id [STEEPLE] name: description):"]
     lines += [f"{d['id']} [{d['steeple']}] {d['name']}: {d['description']}" for d in state["drivers"]]
     if state.get("feedback"):
         previous = [{"name": c["name"], "driver_ids": c["driver_ids"]} for c in state.get("clusters", [])]
@@ -62,32 +55,6 @@ def task(state: State) -> str:
             "Return the full revised clustering.",
         ]
     return "\n".join(lines)
-
-
-def grader_view(drivers: list[Driver]):
-    """Show the grader the final clusters with driver names, in chunks it will not truncate."""
-    names = {d["id"]: f"{d['name']} [{d['steeple']}]" for d in drivers}
-
-    def prepare(messages: list[AnyMessage]) -> list[AnyMessage]:
-        last = next((m for m in reversed(messages) if isinstance(m, AIMessage) and m.text), None)
-        try:
-            clusters = Clusters.model_validate_json(last.text).clusters
-        except (AttributeError, ValueError):
-            return messages
-        blocks = [
-            f"## {c.name} ({len(c.driver_ids)} drivers)\nRationale: {c.rationale}\nDrivers: "
-            + "; ".join(names.get(i, i) for i in c.driver_ids)
-            for c in clusters
-        ]
-        chunks = [""]
-        for block in blocks:
-            if len(chunks[-1]) + len(block) > MAX_GRADER_CHARS:
-                chunks.append("")
-            chunks[-1] += block + "\n\n"
-        request = HumanMessage(f"Cluster {len(drivers)} drivers of change by interconnection.")
-        return [request] + [AIMessage(chunk) for chunk in chunks]
-
-    return prepare
 
 
 def cover_all(clusters: list[dict], drivers: list[Driver]) -> list[dict]:
@@ -109,31 +76,19 @@ def cover_all(clusters: list[dict], drivers: list[Driver]) -> list[dict]:
 
 def research(prompt: str, drivers: list[Driver]) -> list[dict]:
     report = reporter()
+    names = {d["id"]: f"{d['name']} [{d['steeple']}]" for d in drivers}
 
-    def on_evaluation(evaluation) -> None:
-        failed = [c for c in evaluation["criteria"] if not c["passed"]]
-        detail = "; ".join(c["gap"] for c in failed)
-        report(f"Rubric check {evaluation['iteration'] + 1}: {evaluation['result']}" + (f" ({detail})" if detail else ""))
+    def blocks(answer: Clusters) -> list[str]:
+        return [
+            f"## {c.name} ({len(c.driver_ids)} drivers)\nRationale: {c.rationale}\nDrivers: "
+            + "; ".join(names.get(i, i) for i in c.driver_ids)
+            for c in answer.clusters
+        ]
 
-    grader = RubricMiddleware(
-        model=chat_model(settings.grader_model),
-        prepare_messages_for_grader=grader_view(drivers),
-        max_iterations=3,
-        on_evaluation=on_evaluation,
-    )
-    agent = create_deep_agent(
-        model=chat_model(settings.reasoning_model),
-        system_prompt=SYSTEM,
-        middleware=[grader],
-        response_format=Clusters,
-    )
     report(f"Clustering {len(drivers)} drivers…")
-    result = with_retries(
-        lambda: agent.invoke({"messages": [HumanMessage(prompt)], "rubric": RUBRIC}, {"recursion_limit": 100}), report
-    )
-    clusters = [c.model_dump() for c in result["structured_response"].clusters]
-    report(f"Done: {len(clusters)} clusters.")
-    return clusters
+    answer = ask_graded(Clusters, SYSTEM, prompt, RUBRIC, blocks, report)
+    report(f"Done: {len(answer.clusters)} clusters.")
+    return [c.model_dump() for c in answer.clusters]
 
 
 def clusters(state: State) -> dict:

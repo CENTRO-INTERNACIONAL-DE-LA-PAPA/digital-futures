@@ -9,6 +9,7 @@ DEFAULT_SCOPE: Scope = {
     "horizon_year": 2065,
     "seed_drivers": [],
     "target_drivers": 80,
+    "axis_sets": 3,
 }
 
 

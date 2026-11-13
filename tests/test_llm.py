@@ -1,8 +1,9 @@
 import pytest
 from langchain.agents.structured_output import StructuredOutputValidationError
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
+from pydantic import BaseModel
 
-from digital_futures.llm import with_retries
+from digital_futures.llm import grader_view, with_retries
 
 
 def broken(reason="error"):
@@ -51,3 +52,21 @@ def test_chat_model_uses_the_full_output_limit_and_caps_reasoning():
     assert model.max_tokens == model.profile["max_output_tokens"] > 16_000
     assert model.reasoning == {"effort": "low"}
     assert model.profile["structured_output"] is True
+
+
+class Items(BaseModel):
+    items: list[str]
+
+
+def test_grader_view_shows_the_answer_in_untruncated_chunks():
+    answer = Items(items=[f"{i} " + "N" * 300 for i in range(40)]).model_dump_json()
+    view = grader_view(Items, "the request", lambda a: [f"## {item}" for item in a.items])
+    messages = view([HumanMessage("a very long prompt"), AIMessage(answer)])
+    assert messages[0].text == "the request"
+    assert all(len(m.text) <= 4_000 for m in messages)
+    assert sum(m.text.count("## ") for m in messages[1:]) == 40
+
+
+def test_grader_view_leaves_unparseable_transcripts_alone():
+    messages = [HumanMessage("x"), AIMessage("not json")]
+    assert grader_view(Items, "the request", lambda a: a.items)(messages) == messages

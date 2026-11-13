@@ -1,13 +1,19 @@
-"""Chat models and the helpers every AI step uses: logging of each call, retries, parallel questions."""
+"""Chat models and the helpers every AI step uses: logging of each call, retries, parallel
+questions, and agents graded against a rubric."""
 
 import time
 
+from deepagents import create_deep_agent
+from deepagents.middleware.rubric import RubricMiddleware
 from langchain.agents.structured_output import StructuredOutputValidationError
 from langchain.chat_models import init_chat_model
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 
 from digital_futures.config import log, settings
+
+MAX_GRADER_CHARS = 3_800  # the rubric grader truncates each transcript message at 4,000 characters
 
 
 class CallLog(BaseCallbackHandler):
@@ -83,12 +89,57 @@ def with_retries(call, report, attempts: int = 3):
             report(f"The AI's answer came back broken (finish reason: {reason}); retrying ({attempt}/{attempts - 1})…")
 
 
-def ask_all(schema, prompts: list[str], report, label: str, check=None, attempts: int = 3) -> list:
-    """Ask the reasoning model independent structured questions in parallel.
+def grader_view(schema, request: str, blocks):
+    """What the grader reads: the request and the final answer as text, in chunks it will not truncate.
+
+    `blocks(answer)` renders the parsed answer as a list of text blocks (with names, not only ids).
+    """
+
+    def prepare(messages: list[AnyMessage]) -> list[AnyMessage]:
+        last = next((m for m in reversed(messages) if isinstance(m, AIMessage) and m.text), None)
+        try:
+            answer = schema.model_validate_json(last.text)
+        except (AttributeError, ValueError):
+            return messages
+        chunks = [""]
+        for block in blocks(answer):
+            if len(chunks[-1]) + len(block) > MAX_GRADER_CHARS:
+                chunks.append("")
+            chunks[-1] += block + "\n\n"
+        return [HumanMessage(request)] + [AIMessage(chunk) for chunk in chunks]
+
+    return prepare
+
+
+def ask_graded(schema, system: str, prompt: str, rubric: str, blocks, report):
+    """Ask a deep agent for a structured answer; a grader checks it against `rubric` and sends it
+    back for another try (up to 3 checks) when a criterion fails."""
+
+    def on_evaluation(evaluation) -> None:
+        gaps = "; ".join(c["gap"] for c in evaluation["criteria"] if not c["passed"])
+        report(f"Rubric check {evaluation['iteration'] + 1}: {evaluation['result']}" + (f" ({gaps})" if gaps else ""))
+
+    grader = RubricMiddleware(
+        model=chat_model(settings.grader_model),
+        prepare_messages_for_grader=grader_view(schema, prompt.splitlines()[0], blocks),
+        max_iterations=3,
+        on_evaluation=on_evaluation,
+    )
+    agent = create_deep_agent(
+        model=chat_model(settings.reasoning_model), system_prompt=system, middleware=[grader], response_format=schema
+    )
+    result = with_retries(
+        lambda: agent.invoke({"messages": [HumanMessage(prompt)], "rubric": rubric}, {"recursion_limit": 100}), report
+    )
+    return result["structured_response"]
+
+
+def ask_all(schema, prompts: list[str], report, label: str, check=None, attempts: int = 3, model: str | None = None) -> list:
+    """Ask a model (the reasoning model unless `model` is given) independent structured questions in parallel.
 
     Answers that come back broken, or fail `check(index, answer)`, are asked again.
     """
-    llm = chat_model(settings.reasoning_model).with_structured_output(schema, method="json_schema")
+    llm = chat_model(model or settings.reasoning_model).with_structured_output(schema, method="json_schema")
     answers: list = [None] * len(prompts)
     todo = list(range(len(prompts)))
     for attempt in range(1, attempts + 1):

@@ -5,6 +5,7 @@ import importlib
 from digital_futures.nodes.scope import DEFAULT_SCOPE
 
 axes = importlib.import_module("digital_futures.nodes.axes")
+signals = importlib.import_module("digital_futures.nodes.signals")
 quadrants = importlib.import_module("digital_futures.nodes.quadrants")
 narratives = importlib.import_module("digital_futures.nodes.narratives")
 critical = importlib.import_module("digital_futures.nodes.critical")
@@ -60,3 +61,17 @@ def test_quadrant_prompt_shows_both_axes_with_their_poles():
 
 def test_critical_pick_keeps_only_the_cluster_key():
     assert critical.Pick(cluster="C1 · Groundwater", driver_id="d1", rationale="r").cluster == "C1"
+
+
+def test_every_pole_gets_a_signal_with_sources_from_the_search_only():
+    state = STATE | axes.axes(STATE)
+    found = signals.signals(state)["signals"]
+    assert [g["pole"] for g in found] == ["d1 one way", "d1 another way", "d2 one way", "d2 another way"]
+    assert found[0]["status"] == "early signals"
+    assert found[0]["sources"] == [{"title": "News", "url": "http://news"}]  # the invented link is dropped
+
+
+def test_quadrant_prompt_carries_what_is_seen_today():
+    state = STATE | axes.axes(STATE)
+    state |= signals.signals(state)
+    assert "Seen today (early signals: s)" in quadrants.prompt(state, state["axis_sets"][0])

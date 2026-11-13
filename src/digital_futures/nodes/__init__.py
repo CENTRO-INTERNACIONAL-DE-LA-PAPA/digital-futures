@@ -8,6 +8,7 @@ from digital_futures.nodes.narratives import narratives
 from digital_futures.nodes.quadrants import quadrants
 from digital_futures.nodes.scope import scope
 from digital_futures.nodes.scoring import score_impact, score_policy
+from digital_futures.nodes.signals import signals
 
 __all__ = [
     "axes",
@@ -19,4 +20,5 @@ __all__ = [
     "scope",
     "score_impact",
     "score_policy",
+    "signals",
 ]

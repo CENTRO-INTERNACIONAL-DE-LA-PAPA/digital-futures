@@ -8,17 +8,28 @@ from pathlib import Path
 from langchain_core.tools import tool
 from langchain_tavily import TavilySearch
 
+from digital_futures.config import log
+
+
+SOCIAL_MEDIA = ["facebook.com", "youtube.com", "instagram.com", "tiktok.com", "x.com", "twitter.com", "reddit.com"]
+
 
 def web_search() -> TavilySearch:
-    return TavilySearch(max_results=5)
+    return TavilySearch(max_results=5, exclude_domains=SOCIAL_MEDIA)  # posts and videos are weak sources
 
 
-@tool
-def find_papers(query: str) -> list[dict] | str:
-    """Search the academic literature (Asta / Semantic Scholar) and return the most relevant papers.
+def search_web(query: str) -> list[dict]:
+    """Top web results as {title, url, content}. A failed search does not stop a step: the model is told."""
+    try:
+        results = web_search().invoke({"query": query})["results"]
+    except Exception as e:
+        log.warning("Web search failed for %r: %r", query, e)
+        return [{"title": f"search failed: {type(e).__name__}", "url": "", "content": ""}]
+    return [{"title": r["title"], "url": r["url"], "content": r["content"][:300]} for r in results]
 
-    Slow (about 40 seconds per call): use a few rich, specific queries rather than many small ones.
-    """
+
+def search_papers(query: str) -> list[dict]:
+    """Most relevant academic papers (Asta / Semantic Scholar); empty when the search fails. About 40 s."""
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "papers.json"
         cmd = ["asta", "literature", "find", query, "-o", str(out), "--mode", "fast", "--timeout", "150"]
@@ -26,7 +37,8 @@ def find_papers(query: str) -> list[dict] | str:
             subprocess.run(cmd, check=True, capture_output=True, timeout=180)
             papers = json.loads(out.read_text())["results"][:8]
         except (subprocess.SubprocessError, OSError, KeyError, json.JSONDecodeError) as e:
-            return f"Paper search failed ({type(e).__name__}); rely on web search for this topic."
+            log.warning("Paper search failed for %r: %r", query, e)
+            return []
     return [
         {
             "title": p["title"],
@@ -36,3 +48,12 @@ def find_papers(query: str) -> list[dict] | str:
         }
         for p in papers
     ]
+
+
+@tool
+def find_papers(query: str) -> list[dict] | str:
+    """Search the academic literature (Asta / Semantic Scholar) and return the most relevant papers.
+
+    Slow (about 40 seconds per call): use a few rich, specific queries rather than many small ones.
+    """
+    return search_papers(query) or "Paper search failed or found nothing; rely on web search for this topic."

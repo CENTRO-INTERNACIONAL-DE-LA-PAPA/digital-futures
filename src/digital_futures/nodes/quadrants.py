@@ -20,7 +20,8 @@ For each scenario give:
 Rules:
 - Develop all four with the same depth. None is the best case, the worst case or "business as usual".
 - Every scenario has both opportunities and hardships.
-- Each must be reachable from the current year by a plausible path.
+- Each must be reachable from the current year by a plausible path. Build on what is seen
+  today for each pole, where that is given.
 - Do not assume that technology or AI solves the problems, and avoid optimism by default.
 - The four scenarios must differ clearly from one another.
 - Write in plain words that a workshop participant follows at first reading. No jargon."""
@@ -42,15 +43,15 @@ class Quadrants(BaseModel):
 def prompt(state: State, axis_set: AxisSet) -> str:
     s = state["scope"]
     drivers = {d["id"]: d for d in state.get("drivers", [])}
+    today = {g["pole"]: f"{g['status']}: {g['signals']}" for g in state.get("signals", []) if g["axis_set"] == axis_set["name"]}
     lines = [GUIDE, f"Scope: {s['theme']} in {s['geography']}, from {s['current_year']} to {s['horizon_year']}."]
     for key in ("x", "y"):
         axis = axis_set[key]
         about = drivers.get(axis["driver_id"], {}).get("description", "")
-        lines += [
-            f"\n{key.upper()} axis: {axis.get('driver', axis['driver_id'])}. {about}",
-            f"  {key} = a: {axis['pole_a']}",
-            f"  {key} = b: {axis['pole_b']}",
-        ]
+        lines.append(f"\n{key.upper()} axis: {axis.get('driver', axis['driver_id'])}. {about}")
+        for pole in "ab":
+            text = axis[f"pole_{pole}"]
+            lines.append(f"  {key} = {pole}: {text}" + (f"\n    Seen today ({today[text]})" if text in today else ""))
     if state.get("feedback"):
         previous = [q for q in state.get("quadrants", []) if q["axis_set"] == axis_set["name"]]
         lines += [

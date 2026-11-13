@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from digital_futures.llm import ask_all
 from digital_futures.progress import reporter
 from digital_futures.state import Cluster, Driver, State
-from digital_futures.tools import web_search
+from digital_futures.tools import search_web
 
 IMPACT_GUIDE = """Score each driver from 1 to 5 on two separate dimensions.
 
@@ -108,12 +108,7 @@ def score_impact(state: State) -> dict:
 
 
 def policy_search(driver: Driver, geography: str) -> list[dict]:
-    query = f"{driver['name']} policy strategy regulation {geography}"
-    try:
-        results = web_search().invoke({"query": query})["results"]
-    except Exception as e:  # a failed search should not stop the step; the model is told
-        return [{"title": f"search failed: {type(e).__name__}", "url": "", "content": ""}]
-    return [{"title": r["title"], "url": r["url"], "content": r["content"][:300]} for r in results]
+    return search_web(f"{driver['name']} policy strategy regulation {geography}")
 
 
 def policy_prompt(state: State, cluster: Cluster, drivers: list[Driver], found: dict[str, list[dict]]) -> str:

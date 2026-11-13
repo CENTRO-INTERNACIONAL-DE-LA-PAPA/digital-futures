@@ -16,6 +16,7 @@ clusters_node = importlib.import_module("digital_futures.nodes.clusters")
 scoring_node = importlib.import_module("digital_futures.nodes.scoring")
 critical_node = importlib.import_module("digital_futures.nodes.critical")
 axes_node = importlib.import_module("digital_futures.nodes.axes")
+signals_node = importlib.import_module("digital_futures.nodes.signals")
 quadrants_node = importlib.import_module("digital_futures.nodes.quadrants")
 narratives_node = importlib.import_module("digital_futures.nodes.narratives")
 
@@ -50,6 +51,9 @@ def fake_ask_all(schema, prompts, report, label, check=None, attempts=3, model=N
             data = {"scores": [{"driver_id": i, "impact": 4, "uncertainty": 3, "evidence": "e"} for i in ids]}
         elif schema is scoring_node.PolicyScores:
             data = {"scores": [{"driver_id": i, "policy_attention": 2, "policy_evidence": "p"} for i in ids]}
+        elif schema is signals_node.AxisSignals:
+            urls = re.findall(r"\((http[^)\s,]+)\)", prompt)
+            data = {"poles": [{"pole": k, "status": "early signals", "signals": "s", "urls": [*urls, "http://invented"]} for k in "ab"]}
         elif schema is quadrants_node.Quadrants:
             data = {"quadrants": [{"x": x, "y": y, "title": f"World {x}{y}", "sketch": "s"} for x in "ab" for y in "ab"]}
         elif schema is narratives_node.Voices:
@@ -71,5 +75,8 @@ def offline(monkeypatch):
     monkeypatch.setattr(scoring_node, "policy_search", lambda driver, geography: [])
     monkeypatch.setattr(critical_node, "ask_all", fake_ask_all)
     monkeypatch.setattr(axes_node, "research", fake_axes)
+    monkeypatch.setattr(signals_node, "ask_all", fake_ask_all)
+    monkeypatch.setattr(signals_node, "search_web", lambda query: [{"title": "News", "url": "http://news", "content": query}])
+    monkeypatch.setattr(signals_node, "search_papers", lambda query: [])
     monkeypatch.setattr(quadrants_node, "ask_all", fake_ask_all)
     monkeypatch.setattr(narratives_node, "ask_all", fake_ask_all)

@@ -69,6 +69,17 @@ class AxisSet(TypedDict):
     rationale: str
 
 
+class Signal(TypedDict):
+    """Whether one pole of an axis is already visible today, with the links that show it."""
+
+    axis_set: str
+    driver: str
+    pole: str
+    status: Literal["happening now", "early signals", "no signal found"]
+    signals: str
+    sources: list[Source]
+
+
 class Quadrant(TypedDict):
     axis_set: str
     x_pole: str
@@ -100,6 +111,7 @@ class State(TypedDict, total=False):
     scores: list[Score]
     critical: list[Critical]
     axis_sets: list[AxisSet]
+    signals: list[Signal]
     quadrants: list[Quadrant]
     narratives: list[Narrative]
     reviews: Annotated[list[Review], add]

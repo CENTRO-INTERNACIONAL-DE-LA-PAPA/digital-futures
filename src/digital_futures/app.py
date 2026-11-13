@@ -23,6 +23,7 @@ TITLES = {
     "score_policy": "4b · Attention in policy arenas",
     "critical": "5 · Critical drivers",
     "axes": "6 · Axes of uncertainty",
+    "signals": "6b · Signals of plausibility",
     "quadrants": "7 · Quadrants",
     "narratives": "8 · Narratives",
 }

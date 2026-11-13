@@ -19,6 +19,7 @@ STEPS = [
     ("score_policy", "scores", nodes.score_policy),
     ("critical", "critical", nodes.critical),
     ("axes", "axis_sets", nodes.axes),
+    ("signals", "signals", nodes.signals),
     ("quadrants", "quadrants", nodes.quadrants),
     ("narratives", "narratives", nodes.narratives),
 ]

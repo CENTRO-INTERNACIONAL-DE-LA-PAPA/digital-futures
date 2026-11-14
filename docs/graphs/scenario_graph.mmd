@@ -1,0 +1,64 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	scope(scope)
+	drivers(drivers)
+	review_drivers(review_drivers)
+	clusters(clusters)
+	review_clusters(review_clusters)
+	score_impact(score_impact)
+	review_score_impact(review_score_impact)
+	score_policy(score_policy)
+	review_score_policy(review_score_policy)
+	critical(critical)
+	review_critical(review_critical)
+	axes(axes)
+	review_axes(review_axes)
+	signals(signals)
+	review_signals(review_signals)
+	quadrants(quadrants)
+	review_quadrants(review_quadrants)
+	narratives(narratives)
+	review_narratives(review_narratives)
+	backcast(backcast)
+	review_backcast(review_backcast)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> scope;
+	axes --> review_axes;
+	backcast --> review_backcast;
+	clusters --> review_clusters;
+	critical --> review_critical;
+	drivers --> review_drivers;
+	narratives --> review_narratives;
+	quadrants --> review_quadrants;
+	review_axes -.-> axes;
+	review_axes -.-> signals;
+	review_backcast -.-> __end__;
+	review_backcast -.-> backcast;
+	review_clusters -.-> clusters;
+	review_clusters -.-> score_impact;
+	review_critical -.-> axes;
+	review_critical -.-> critical;
+	review_drivers -.-> clusters;
+	review_drivers -.-> drivers;
+	review_narratives -.-> backcast;
+	review_narratives -.-> narratives;
+	review_quadrants -.-> narratives;
+	review_quadrants -.-> quadrants;
+	review_score_impact -.-> score_impact;
+	review_score_impact -.-> score_policy;
+	review_score_policy -.-> critical;
+	review_score_policy -.-> score_policy;
+	review_signals -.-> quadrants;
+	review_signals -.-> signals;
+	scope --> drivers;
+	score_impact --> review_score_impact;
+	score_policy --> review_score_policy;
+	signals --> review_signals;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc

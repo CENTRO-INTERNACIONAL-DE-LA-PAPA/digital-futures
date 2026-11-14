@@ -38,7 +38,8 @@ Markdown and JSON.
 The design rules come from earlier probes with general chat models (October 2025 to January
 2026), which showed what goes wrong when the AI works alone: generic clusters, axes that are
 just good against bad, and a pull towards optimistic, technology-driven futures. Those rules
-and the full design are in [docs/PLAN.md](docs/PLAN.md).
+and the full design are in [docs/PLAN.md](docs/PLAN.md). The graph of the process, and the agent
+graphs that some steps build, are drawn in [docs/GRAPH.md](docs/GRAPH.md).
 
 ## Running it
 

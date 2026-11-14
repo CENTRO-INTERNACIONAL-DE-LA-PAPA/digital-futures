@@ -1,0 +1,36 @@
+flowchart TB
+    subgraph scan["Scan"]
+        direction LR
+        scope["1 · scope"] --> drivers["2 · drivers"] --> clusters["3 · clusters"]
+    end
+    subgraph prioritise["Prioritise"]
+        direction LR
+        score_impact["4a · impact and uncertainty"] --> score_policy["4b · policy attention"] --> critical["5 · critical drivers"]
+    end
+    subgraph build["Build"]
+        direction LR
+        axes["6 · axes"] --> signals["6b · signals"] --> quadrants["7 · quadrants"]
+    end
+    subgraph tell["Tell"]
+        direction LR
+        narratives["8 · narratives"] --> backcast["9 · backcasting"]
+    end
+    scan --> prioritise --> build --> tell
+
+    subgraph legend["What runs inside a step"]
+        direction LR
+        k0["no AI"]
+        k1["tool agent: model and search tools in a loop"]
+        k2["deep agent graded against a rubric"]
+        k3["parallel model calls, no inner graph"]
+    end
+    tell ~~~ legend
+
+    classDef plain fill:#eeeeee,stroke:#555555,color:#111111
+    classDef tool fill:#cfe3ff,stroke:#2b5fa8,color:#111111
+    classDef deep fill:#ffe08a,stroke:#9a6b00,color:#111111
+    classDef calls fill:#d8f0d8,stroke:#2f7d32,color:#111111
+    class scope,k0 plain
+    class drivers,k1 tool
+    class clusters,axes,k2 deep
+    class score_impact,score_policy,critical,signals,quadrants,narratives,backcast,k3 calls

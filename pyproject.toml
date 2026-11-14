@@ -1,7 +1,7 @@
 [project]
 name = "digital-futures"
 version = "0.1.0"
-description = "Add your description here"
+description = "Human-in-the-loop agent for building future scenarios for food, land and water systems"
 readme = "README.md"
 authors = [
     { name = "pipaber", email = "p.palacios.bernuy@gmail.com" }

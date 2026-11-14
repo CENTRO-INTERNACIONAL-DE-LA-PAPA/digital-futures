@@ -1,77 +1,90 @@
 # Digital Futures
 
-1. Define thematic, geographic and temporal scope.
-    theme: food, land and water 
-    geography: south countries
-    current_time: 2026
-    future_time: 2065
+An agent that helps a small team build future scenarios for food, land and water systems,
+one step at a time, with a person reviewing every step.
 
-2. Identify drivers of change.
-    how: web search to identify signals of change, Asta find papers to get lastest papers on certain issues.
-    approach: AI + human in the loop
+It follows the scenario method used in the CGIAR future scenarios workshop held in Palmira in
+September 2025: scan for drivers of change, cluster and score them, pick the critical
+uncertainties, cross two of them into a 2×2 matrix, and write what each quadrant would be like
+to live in. The AI does the reading, searching and drafting. People keep the decisions.
 
-3. Cluster drivers.
-    approach: AI + human in the loop
+This is a probe of the CGIAR Digital Transformation Accelerator (Area of Work 3, Technology
+Horizons), led by the International Potato Center (CIP). It is research software at
+proof-of-concept stage, not a product.
 
-4. Vote for uncertainty, impact, and consideration of driver in political arenas.
-    how can I define something is uncertain? No data retrieved from AI?
-    how can I say a driver can have a high plausible impact in the future?
-    how can I say a driver have impact in political areas?
+![The scenario matrix and one scenario](docs/screenshots/scenarios.png)
 
-5. identify critical drivers (most uncertain, highest impact and least discussed).
-    Based on the votes and retrived information form AI, identify the most critical drivers.
+## What it does
 
-6. Ideation of axes of uncertainty.
-    The axes cannot be plus/minus, more/less, greater/lesser, etc. These need to be coordinated between AI and human in the loop.
+| Step | What happens | Who decides |
+| --- | --- | --- |
+| 1 · Scope | Theme, geography, time frame, optional seed drivers | Person |
+| 2 · Drivers of change | Web and literature search for about 80 drivers, each with sources | AI proposes, person reviews |
+| 3 · Clusters | Drivers grouped by how they interact; graded against a rubric so clusters stay specific | AI proposes, person reviews |
+| 4a · Impact and uncertainty | Scores from 1 to 5 with the evidence behind them | AI pre-scores, person adjusts |
+| 4b · Attention in policy arenas | One search per driver; the score cites what it found | AI pre-scores, person adjusts |
+| 5 · Critical drivers | One per cluster: highest impact and uncertainty, then least discussed | AI proposes, person reviews |
+| 6 · Axes of uncertainty | Critical drivers paired into matrices; each axis has two neutral poles | AI proposes, person reviews |
+| 6b · Signals of plausibility | For each pole: how far today is from it, with cited signals | AI proposes, person reviews |
+| 7 · Quadrants | All four scenarios of every matrix, none prioritised | AI proposes, person reviews |
+| 8 · Narratives | Each scenario told by a farmer, a community leader, a scientist and a policy maker | AI proposes, person reviews |
+| 9 · Backcasting | A pathway back from the horizon year, and signals for and against it today | AI proposes, person reviews |
 
-7. Prioritize scenarios.
-    AI can develop the four quadrants instead of prioritizing some scenarios over others.
+At every review the person can approve the step, edit it by hand, or send it back to the AI
+with feedback. Results are saved, so going back to a step and continuing without changes costs
+nothing. Each run records its time, AI cost and how much the reviewer changed, and exports to
+Markdown and JSON.
 
-8. Develop scenario narratives.
-   The narratives need to be developed as we were: farmers, community leaders, scientists, policy makers.
+The design rules come from earlier probes with general chat models (October 2025 to January
+2026), which showed what goes wrong when the AI works alone: generic clusters, axes that are
+just good against bad, and a pull towards optimistic, technology-driven futures. Those rules
+and the full design are in [docs/PLAN.md](docs/PLAN.md).
 
-# Guides for AI
+## Running it
 
-- each step must be a node.
-- the stack will be langgraph and deepagents (from langgraph).
-- the codebase must be open source.
-- the codebase must be written in python and with a clean code approach (less is more).
-- the codebase must be easy to understand and maintain.
-
-- With respect to the nodes:
-    - node 1: I think there is no need for an llm in this node because we can fill manually or as default the state.
-    - node 2: Here we need an llm (probably opus 5.5) with web search tool, asta find papers tool and interrupt in the flow so humans can provide feedback.
-    - node 3: Probably the clustering need a deepagent (from langgraph) to cluster the drivers with grading rubrics.
-    - node 4: Not sure about this, we need to planify it.
-    - node 5: This is a node with an llm (probably opus 5.5).
-    - node 6: This definitely needs a deepagent (from langgraph) with grading rubrics and human in the loop.
-    - node 7: This is just a node with an llm (probably opus 5.5).
-    - node 8: Becase these are narrative a gemini model will be enough.
-
-# With respect to other specs:
-
-- Quiero postgress como checkpointer y store para la memoria de los agentes (https://docs.langchain.com/oss/python/langgraph/add-memory).
-- Langgraph interrupts: https://docs.langchain.com/oss/python/langgraph/interrupts 
-- Deepagents: https://docs.langchain.com/oss/python/deepagents/quickstart
-- Deepagents grading: https://docs.langchain.com/oss/python/deepagents/rubric
-- Deepagents interrupts: https://docs.langchain.com/oss/python/deepagents/human-in-the-loop, https://docs.langchain.com/oss/python/deepagents/customization#human-in-the-loop
-
-# History of work
-- Marieke Veger ran this experiment: /home/ppalacios/Documents/digital_futures/historial_completo_FLW_2040.md
-- These are previous findings: /home/ppalacios/Documents/digital_futures/Lessons learned_Probes to develop AI guided future scenarios_Marieke Veeger.docx
-- This is the result of an in-person workshop: /home/ppalacios/Documents/digital_futures/workshop_results.qmd
-- These are the last thooughts we got from Marieke: /home/ppalacios/Documents/digital_futures/last_email_from_marieke.txt
-
-# Running
+You need Python 3.12 or later, [uv](https://docs.astral.sh/uv/), Docker, Node 20 or later, and
+API keys for [OpenRouter](https://openrouter.ai) and [Tavily](https://tavily.com). The paper
+search uses the [Asta](https://asta.allen.ai) command line tool.
 
 ```bash
-cp .env.example .env          # add API keys
-docker compose up -d          # Postgres checkpointer + store
+cp .env.example .env          # add your API keys
+docker compose up -d          # Postgres: checkpoints and memory
 uv sync
-(cd frontend && npm install && npm run build)   # build the web app once (needs Node 20+)
-uv run digital-futures-web    # web app: http://localhost:8510 (React app + API)
-uv run digital-futures        # terminal runner (new run); pass a run id to resume
-uv run pytest
+(cd frontend && npm install && npm run build)
+uv run digital-futures-web    # web app at http://localhost:8510
 ```
 
-Development plan and design rules: [docs/PLAN.md](docs/PLAN.md).
+`uv run digital-futures` runs the same process in the terminal, and `uv run pytest` runs the
+tests.
+
+## What to expect
+
+The first complete run with the default models produced 86 drivers, 26 clusters and 12
+scenarios. Steps 6 to 9 of that run took under five minutes of AI time and cost USD 0.17.
+
+Treat the output as material for a conversation, not as a forecast:
+
+- The narratives are fiction that makes a scenario concrete.
+- Sources are cited from search results, but the AI can still misread them. Check the ones you rely on.
+- The process has not yet been compared with a human-only workshop under controlled conditions.
+- Scenarios should be validated with domain experts before anyone uses them for a decision.
+
+## Stack
+
+LangGraph for the step graph and the human review interrupts, deepagents for the two steps
+graded against a rubric, Postgres for persistence, FastAPI and React for the web app. Models
+are reached through OpenRouter and can be changed in `.env`.
+
+## Credits
+
+Developed by Piero Palacios (CIP). The scenario method and the lessons that shaped the design
+rules come from joint work with Marieke Veeger (strategic foresight), Daniel Jiménez (Alliance
+of Bioversity International and CIAT) and Leroy Mwanzia (CIP).
+
+Funded by the CGIAR Digital Transformation Accelerator.
+
+Parts of the code and documentation were written with AI assistance and reviewed by the author.
+
+## License
+
+[Creative Commons Attribution 4.0 International](LICENSE).

@@ -3,8 +3,9 @@
 Digital Futures has one scenario graph, compiled once and used for every run. Some of its steps
 build a second, smaller graph of their own each time they run: an agent. Most steps do not.
 
-The drawings on this page, except the first, are what LangGraph draws from the compiled
-graphs (`get_graph().draw_mermaid()`). To draw them again after a change:
+The drawings on this page, except the first, are generated from the nodes and edges of the
+compiled graphs (LangGraph's `get_graph()`). They are written in plain Mermaid so that they
+render in any Markdown preview. To draw them again after a change:
 
 ```bash
 uv run python scripts/draw_graphs.py docs/graphs
@@ -12,8 +13,10 @@ uv run python scripts/draw_graphs.py docs/graphs
 
 ## Overview
 
-The eleven steps in order, coloured by what runs inside each one. A person reviews the result
-of every step after the scope. This drawing is written by hand; the ones below are generated.
+The eleven steps in order, coloured by what runs inside each one: grey for no AI, blue for a
+tool agent, yellow for a deep agent graded against a rubric, green for direct model calls. A
+person reviews the result of every step after the scope. This drawing is written by hand; the
+ones below are generated.
 
 ```mermaid
 flowchart TB
@@ -35,23 +38,14 @@ flowchart TB
     end
     scan --> prioritise --> build --> tell
 
-    subgraph legend["What runs inside a step"]
-        direction LR
-        k0["no AI"]
-        k1["tool agent: model and search tools in a loop"]
-        k2["deep agent graded against a rubric"]
-        k3["parallel model calls, no inner graph"]
-    end
-    tell ~~~ legend
-
     classDef plain fill:#eeeeee,stroke:#555555,color:#111111
     classDef tool fill:#cfe3ff,stroke:#2b5fa8,color:#111111
     classDef deep fill:#ffe08a,stroke:#9a6b00,color:#111111
     classDef calls fill:#d8f0d8,stroke:#2f7d32,color:#111111
-    class scope,k0 plain
-    class drivers,k1 tool
-    class clusters,axes,k2 deep
-    class score_impact,score_policy,critical,signals,quadrants,narratives,backcast,k3 calls
+    class scope plain
+    class drivers tool
+    class clusters,axes deep
+    class score_impact,score_policy,critical,signals,quadrants,narratives,backcast calls
 ```
 
 | Step | What runs inside | Its own graph |
@@ -72,101 +66,103 @@ flowchart TB
 
 Every step is followed by a review node. The review pauses the run and waits for a person, who
 approves the result, edits it, or sends it back with feedback. The dotted arrows are that
-choice: back to the same step, or on to the next. With review switched off (`hitl=False`) the
+choice: back to the same step, or on to the next. Steps keep the colours of the overview and
+review nodes are pink. With review switched off (`hitl=False`) the
 review nodes approve on their own and the graph runs straight through.
 
 ```mermaid
----
-config:
-  flowchart:
-    curve: linear
----
-graph TD;
-	__start__([<p>__start__</p>]):::first
-	scope(scope)
-	drivers(drivers)
-	review_drivers(review_drivers)
-	clusters(clusters)
-	review_clusters(review_clusters)
-	score_impact(score_impact)
-	review_score_impact(review_score_impact)
-	score_policy(score_policy)
-	review_score_policy(review_score_policy)
-	critical(critical)
-	review_critical(review_critical)
-	axes(axes)
-	review_axes(review_axes)
-	signals(signals)
-	review_signals(review_signals)
-	quadrants(quadrants)
-	review_quadrants(review_quadrants)
-	narratives(narratives)
-	review_narratives(review_narratives)
-	backcast(backcast)
-	review_backcast(review_backcast)
-	__end__([<p>__end__</p>]):::last
-	__start__ --> scope;
-	axes --> review_axes;
-	backcast --> review_backcast;
-	clusters --> review_clusters;
-	critical --> review_critical;
-	drivers --> review_drivers;
-	narratives --> review_narratives;
-	quadrants --> review_quadrants;
-	review_axes -.-> axes;
-	review_axes -.-> signals;
-	review_backcast -.-> __end__;
-	review_backcast -.-> backcast;
-	review_clusters -.-> clusters;
-	review_clusters -.-> score_impact;
-	review_critical -.-> axes;
-	review_critical -.-> critical;
-	review_drivers -.-> clusters;
-	review_drivers -.-> drivers;
-	review_narratives -.-> backcast;
-	review_narratives -.-> narratives;
-	review_quadrants -.-> narratives;
-	review_quadrants -.-> quadrants;
-	review_score_impact -.-> score_impact;
-	review_score_impact -.-> score_policy;
-	review_score_policy -.-> critical;
-	review_score_policy -.-> score_policy;
-	review_signals -.-> quadrants;
-	review_signals -.-> signals;
-	scope --> drivers;
-	score_impact --> review_score_impact;
-	score_policy --> review_score_policy;
-	signals --> review_signals;
-	classDef default fill:#f2f0ff,line-height:1.2
-	classDef first fill-opacity:0
-	classDef last fill:#bfb6fc
+flowchart TB
+    n0["start"]
+    n1["scope"]
+    n2["drivers"]
+    n3["review_drivers"]
+    n4["clusters"]
+    n5["review_clusters"]
+    n6["score_impact"]
+    n7["review_score_impact"]
+    n8["score_policy"]
+    n9["review_score_policy"]
+    n10["critical"]
+    n11["review_critical"]
+    n12["axes"]
+    n13["review_axes"]
+    n14["signals"]
+    n15["review_signals"]
+    n16["quadrants"]
+    n17["review_quadrants"]
+    n18["narratives"]
+    n19["review_narratives"]
+    n20["backcast"]
+    n21["review_backcast"]
+    n22["end"]
+    n0 --> n1
+    n12 --> n13
+    n20 --> n21
+    n4 --> n5
+    n10 --> n11
+    n2 --> n3
+    n18 --> n19
+    n16 --> n17
+    n13 -.-> n12
+    n13 -.-> n14
+    n21 -.-> n22
+    n21 -.-> n20
+    n5 -.-> n4
+    n5 -.-> n6
+    n11 -.-> n12
+    n11 -.-> n10
+    n3 -.-> n4
+    n3 -.-> n2
+    n19 -.-> n20
+    n19 -.-> n18
+    n17 -.-> n18
+    n17 -.-> n16
+    n7 -.-> n6
+    n7 -.-> n8
+    n9 -.-> n10
+    n9 -.-> n8
+    n15 -.-> n16
+    n15 -.-> n14
+    n1 --> n2
+    n6 --> n7
+    n8 --> n9
+    n14 --> n15
+    classDef terminal fill:#ffffff,stroke:#555555,color:#111111
+    classDef plain fill:#eeeeee,stroke:#555555,color:#111111
+    classDef tool fill:#cfe3ff,stroke:#2b5fa8,color:#111111
+    classDef review fill:#f6e3f3,stroke:#8a3d7c,color:#111111
+    classDef deep fill:#ffe08a,stroke:#9a6b00,color:#111111
+    classDef calls fill:#d8f0d8,stroke:#2f7d32,color:#111111
+    class n0,n22 terminal
+    class n1 plain
+    class n2 tool
+    class n3,n5,n7,n9,n11,n13,n15,n17,n19,n21 review
+    class n4,n12 deep
+    class n6,n8,n10,n14,n16,n18,n20 calls
 ```
 
 ## Inside step 2: the tool agent
 
 The model decides which searches to run, reads the results and searches again until it can
-answer. Its tools are Tavily web search and Asta paper search.
+answer. Its tools are Tavily web search and Asta paper search. Dotted arrows are choices the
+agent makes at run time.
 
 ```mermaid
----
-config:
-  flowchart:
-    curve: linear
----
-graph TD;
-	__start__([<p>__start__</p>]):::first
-	model(model)
-	tools(tools<hr/><small><em>__tools = tavily_search, find_papers</em></small>)
-	__end__([<p>__end__</p>]):::last
-	__start__ --> model;
-	model -.-> __end__;
-	model -.-> tools;
-	tools -.-> __end__;
-	tools -.-> model;
-	model -.-> model;
-	classDef default fill:#f2f0ff,line-height:1.2
-	classDef first fill-opacity:0
-	classDef last fill:#bfb6fc
+flowchart TB
+    n0["start"]
+    n1["model"]
+    n2["tools: tavily_search, find_papers"]
+    n3["end"]
+    n0 --> n1
+    n1 -.-> n3
+    n1 -.-> n1
+    n1 -.-> n2
+    n2 -.-> n3
+    n2 -.-> n1
+    classDef terminal fill:#ffffff,stroke:#555555,color:#111111
+    classDef plain fill:#eeeeee,stroke:#555555,color:#111111
+    class n0,n3 terminal
+    class n1,n2 plain
 ```
 
 ## Inside steps 3 and 6: the deep agent with a grader
@@ -181,34 +177,30 @@ carries by default. The prompts of both steps tell the agent to answer directly 
 them.
 
 ```mermaid
----
-config:
-  flowchart:
-    curve: linear
----
-graph TD;
-	__start__([<p>__start__</p>]):::first
-	model(model)
-	tools(tools<hr/><small><em>__tools = ls, read_file, write_file, edit_file, delete, glob, grep, execute, task</em></small>)
-	_ParentNotifierMiddleware\2eafter_agent(_ParentNotifierMiddleware.after_agent)
-	PatchToolCallsMiddleware\2ebefore_agent(PatchToolCallsMiddleware.before_agent)
-	RubricMiddleware\2ebefore_agent(RubricMiddleware.before_agent)
-	RubricMiddleware\2eafter_agent(RubricMiddleware.after_agent)
-	__end__([<p>__end__</p>]):::last
-	PatchToolCallsMiddleware\2ebefore_agent --> RubricMiddleware\2ebefore_agent;
-	RubricMiddleware\2eafter_agent -.-> _ParentNotifierMiddleware\2eafter_agent;
-	RubricMiddleware\2eafter_agent -.-> model;
-	RubricMiddleware\2ebefore_agent --> model;
-	__start__ --> PatchToolCallsMiddleware\2ebefore_agent;
-	model -.-> RubricMiddleware\2eafter_agent;
-	model -.-> tools;
-	tools -.-> RubricMiddleware\2eafter_agent;
-	tools -.-> model;
-	_ParentNotifierMiddleware\2eafter_agent --> __end__;
-	model -.-> model;
-	classDef default fill:#f2f0ff,line-height:1.2
-	classDef first fill-opacity:0
-	classDef last fill:#bfb6fc
+flowchart TB
+    n0["start"]
+    n1["model"]
+    n2["tools: ls, read_file, write_file, edit_file, delete, glob, grep, execute, task"]
+    n3["_ParentNotifierMiddleware.after_agent"]
+    n4["PatchToolCallsMiddleware.before_agent"]
+    n5["RubricMiddleware.before_agent"]
+    n6["RubricMiddleware.after_agent"]
+    n7["end"]
+    n4 --> n5
+    n6 -.-> n3
+    n6 -.-> n1
+    n5 --> n1
+    n0 --> n4
+    n1 -.-> n6
+    n1 -.-> n1
+    n1 -.-> n2
+    n2 -.-> n6
+    n2 -.-> n1
+    n3 --> n7
+    classDef terminal fill:#ffffff,stroke:#555555,color:#111111
+    classDef plain fill:#eeeeee,stroke:#555555,color:#111111
+    class n0,n7 terminal
+    class n1,n2,n3,n4,n5,n6 plain
 ```
 
 ## Why the inner graphs do not appear in the scenario graph

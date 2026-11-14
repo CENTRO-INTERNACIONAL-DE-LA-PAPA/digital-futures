@@ -17,20 +17,11 @@ flowchart TB
     end
     scan --> prioritise --> build --> tell
 
-    subgraph legend["What runs inside a step"]
-        direction LR
-        k0["no AI"]
-        k1["tool agent: model and search tools in a loop"]
-        k2["deep agent graded against a rubric"]
-        k3["parallel model calls, no inner graph"]
-    end
-    tell ~~~ legend
-
     classDef plain fill:#eeeeee,stroke:#555555,color:#111111
     classDef tool fill:#cfe3ff,stroke:#2b5fa8,color:#111111
     classDef deep fill:#ffe08a,stroke:#9a6b00,color:#111111
     classDef calls fill:#d8f0d8,stroke:#2f7d32,color:#111111
-    class scope,k0 plain
-    class drivers,k1 tool
-    class clusters,axes,k2 deep
-    class score_impact,score_policy,critical,signals,quadrants,narratives,backcast,k3 calls
+    class scope plain
+    class drivers tool
+    class clusters,axes deep
+    class score_impact,score_policy,critical,signals,quadrants,narratives,backcast calls

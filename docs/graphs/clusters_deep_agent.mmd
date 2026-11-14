@@ -1,28 +1,24 @@
----
-config:
-  flowchart:
-    curve: linear
----
-graph TD;
-	__start__([<p>__start__</p>]):::first
-	model(model)
-	tools(tools<hr/><small><em>__tools = ls, read_file, write_file, edit_file, delete, glob, grep, execute, task</em></small>)
-	_ParentNotifierMiddleware\2eafter_agent(_ParentNotifierMiddleware.after_agent)
-	PatchToolCallsMiddleware\2ebefore_agent(PatchToolCallsMiddleware.before_agent)
-	RubricMiddleware\2ebefore_agent(RubricMiddleware.before_agent)
-	RubricMiddleware\2eafter_agent(RubricMiddleware.after_agent)
-	__end__([<p>__end__</p>]):::last
-	PatchToolCallsMiddleware\2ebefore_agent --> RubricMiddleware\2ebefore_agent;
-	RubricMiddleware\2eafter_agent -.-> _ParentNotifierMiddleware\2eafter_agent;
-	RubricMiddleware\2eafter_agent -.-> model;
-	RubricMiddleware\2ebefore_agent --> model;
-	__start__ --> PatchToolCallsMiddleware\2ebefore_agent;
-	model -.-> RubricMiddleware\2eafter_agent;
-	model -.-> tools;
-	tools -.-> RubricMiddleware\2eafter_agent;
-	tools -.-> model;
-	_ParentNotifierMiddleware\2eafter_agent --> __end__;
-	model -.-> model;
-	classDef default fill:#f2f0ff,line-height:1.2
-	classDef first fill-opacity:0
-	classDef last fill:#bfb6fc
+flowchart TB
+    n0["start"]
+    n1["model"]
+    n2["tools: ls, read_file, write_file, edit_file, delete, glob, grep, execute, task"]
+    n3["_ParentNotifierMiddleware.after_agent"]
+    n4["PatchToolCallsMiddleware.before_agent"]
+    n5["RubricMiddleware.before_agent"]
+    n6["RubricMiddleware.after_agent"]
+    n7["end"]
+    n4 --> n5
+    n6 -.-> n3
+    n6 -.-> n1
+    n5 --> n1
+    n0 --> n4
+    n1 -.-> n6
+    n1 -.-> n1
+    n1 -.-> n2
+    n2 -.-> n6
+    n2 -.-> n1
+    n3 --> n7
+    classDef terminal fill:#ffffff,stroke:#555555,color:#111111
+    classDef plain fill:#eeeeee,stroke:#555555,color:#111111
+    class n0,n7 terminal
+    class n1,n2,n3,n4,n5,n6 plain

@@ -1,64 +1,68 @@
----
-config:
-  flowchart:
-    curve: linear
----
-graph TD;
-	__start__([<p>__start__</p>]):::first
-	scope(scope)
-	drivers(drivers)
-	review_drivers(review_drivers)
-	clusters(clusters)
-	review_clusters(review_clusters)
-	score_impact(score_impact)
-	review_score_impact(review_score_impact)
-	score_policy(score_policy)
-	review_score_policy(review_score_policy)
-	critical(critical)
-	review_critical(review_critical)
-	axes(axes)
-	review_axes(review_axes)
-	signals(signals)
-	review_signals(review_signals)
-	quadrants(quadrants)
-	review_quadrants(review_quadrants)
-	narratives(narratives)
-	review_narratives(review_narratives)
-	backcast(backcast)
-	review_backcast(review_backcast)
-	__end__([<p>__end__</p>]):::last
-	__start__ --> scope;
-	axes --> review_axes;
-	backcast --> review_backcast;
-	clusters --> review_clusters;
-	critical --> review_critical;
-	drivers --> review_drivers;
-	narratives --> review_narratives;
-	quadrants --> review_quadrants;
-	review_axes -.-> axes;
-	review_axes -.-> signals;
-	review_backcast -.-> __end__;
-	review_backcast -.-> backcast;
-	review_clusters -.-> clusters;
-	review_clusters -.-> score_impact;
-	review_critical -.-> axes;
-	review_critical -.-> critical;
-	review_drivers -.-> clusters;
-	review_drivers -.-> drivers;
-	review_narratives -.-> backcast;
-	review_narratives -.-> narratives;
-	review_quadrants -.-> narratives;
-	review_quadrants -.-> quadrants;
-	review_score_impact -.-> score_impact;
-	review_score_impact -.-> score_policy;
-	review_score_policy -.-> critical;
-	review_score_policy -.-> score_policy;
-	review_signals -.-> quadrants;
-	review_signals -.-> signals;
-	scope --> drivers;
-	score_impact --> review_score_impact;
-	score_policy --> review_score_policy;
-	signals --> review_signals;
-	classDef default fill:#f2f0ff,line-height:1.2
-	classDef first fill-opacity:0
-	classDef last fill:#bfb6fc
+flowchart TB
+    n0["start"]
+    n1["scope"]
+    n2["drivers"]
+    n3["review_drivers"]
+    n4["clusters"]
+    n5["review_clusters"]
+    n6["score_impact"]
+    n7["review_score_impact"]
+    n8["score_policy"]
+    n9["review_score_policy"]
+    n10["critical"]
+    n11["review_critical"]
+    n12["axes"]
+    n13["review_axes"]
+    n14["signals"]
+    n15["review_signals"]
+    n16["quadrants"]
+    n17["review_quadrants"]
+    n18["narratives"]
+    n19["review_narratives"]
+    n20["backcast"]
+    n21["review_backcast"]
+    n22["end"]
+    n0 --> n1
+    n12 --> n13
+    n20 --> n21
+    n4 --> n5
+    n10 --> n11
+    n2 --> n3
+    n18 --> n19
+    n16 --> n17
+    n13 -.-> n12
+    n13 -.-> n14
+    n21 -.-> n22
+    n21 -.-> n20
+    n5 -.-> n4
+    n5 -.-> n6
+    n11 -.-> n12
+    n11 -.-> n10
+    n3 -.-> n4
+    n3 -.-> n2
+    n19 -.-> n20
+    n19 -.-> n18
+    n17 -.-> n18
+    n17 -.-> n16
+    n7 -.-> n6
+    n7 -.-> n8
+    n9 -.-> n10
+    n9 -.-> n8
+    n15 -.-> n16
+    n15 -.-> n14
+    n1 --> n2
+    n6 --> n7
+    n8 --> n9
+    n14 --> n15
+    classDef terminal fill:#ffffff,stroke:#555555,color:#111111
+    classDef plain fill:#eeeeee,stroke:#555555,color:#111111
+    classDef tool fill:#cfe3ff,stroke:#2b5fa8,color:#111111
+    classDef review fill:#f6e3f3,stroke:#8a3d7c,color:#111111
+    classDef deep fill:#ffe08a,stroke:#9a6b00,color:#111111
+    classDef calls fill:#d8f0d8,stroke:#2f7d32,color:#111111
+    class n0,n22 terminal
+    class n1 plain
+    class n2 tool
+    class n3,n5,n7,n9,n11,n13,n15,n17,n19,n21 review
+    class n4,n12 deep
+    class n6,n8,n10,n14,n16,n18,n20 calls

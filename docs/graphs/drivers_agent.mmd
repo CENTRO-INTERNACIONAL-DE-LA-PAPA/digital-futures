@@ -1,19 +1,15 @@
----
-config:
-  flowchart:
-    curve: linear
----
-graph TD;
-	__start__([<p>__start__</p>]):::first
-	model(model)
-	tools(tools<hr/><small><em>__tools = tavily_search, find_papers</em></small>)
-	__end__([<p>__end__</p>]):::last
-	__start__ --> model;
-	model -.-> __end__;
-	model -.-> tools;
-	tools -.-> __end__;
-	tools -.-> model;
-	model -.-> model;
-	classDef default fill:#f2f0ff,line-height:1.2
-	classDef first fill-opacity:0
-	classDef last fill:#bfb6fc
+flowchart TB
+    n0["start"]
+    n1["model"]
+    n2["tools: tavily_search, find_papers"]
+    n3["end"]
+    n0 --> n1
+    n1 -.-> n3
+    n1 -.-> n1
+    n1 -.-> n2
+    n2 -.-> n3
+    n2 -.-> n1
+    classDef terminal fill:#ffffff,stroke:#555555,color:#111111
+    classDef plain fill:#eeeeee,stroke:#555555,color:#111111
+    class n0,n3 terminal
+    class n1,n2 plain
